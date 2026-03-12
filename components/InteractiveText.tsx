@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { pinyin } from 'pinyin-pro';
+import { useSession } from 'next-auth/react';
+import { saveVocab } from '@/utils/userTracker';
 
 interface InteractiveTextProps {
   text: string;
@@ -11,11 +13,13 @@ interface InteractiveTextProps {
 }
 
 export default function InteractiveText({ text, languageId, statuses = {}, interactive = true }: InteractiveTextProps) {
+  const { data: session } = useSession();
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [definition, setDefinition] = useState<string | null>(null);
   const [pinyinValue, setPinyinValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleWordClick = async (e: React.MouseEvent<HTMLSpanElement>, word: string) => {
@@ -29,6 +33,7 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
     setLoading(true);
     setDefinition(null);
     setPinyinValue(null);
+    setSaveStatus(null);
 
     if (languageId === 'zh') {
       setPinyinValue(pinyin(cleanWord, { toneType: 'symbol' }));
@@ -158,13 +163,33 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
               transform: 'translate(-50%, -100%)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', gap: '1rem' }}>
               <strong style={{ fontSize: '1.2rem', color: 'var(--primary)', fontFamily: 'Lexend, sans-serif' }}>{selectedWord}</strong>
               <button 
-                onClick={() => setSelectedWord(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.5rem', lineHeight: 1 }}
+                onClick={() => {
+                  if (session?.user?.email && selectedWord && definition) {
+                    saveVocab(session.user.email, selectedWord, languageId, definition);
+                    setSaveStatus('Saved!');
+                    setTimeout(() => setSaveStatus(null), 2000);
+                  } else if (!session?.user?.email) {
+                    setSaveStatus('Sign in to save');
+                  }
+                }}
+                disabled={!definition || loading || saveStatus === 'Saved!'}
+                style={{ 
+                  background: saveStatus === 'Saved!' ? 'var(--success)' : 'var(--primary)', 
+                  border: 'none', 
+                  cursor: (!definition || loading || saveStatus === 'Saved!') ? 'default' : 'pointer', 
+                  color: 'white', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 600,
+                  padding: '0.3rem 0.6rem',
+                  borderRadius: '12px',
+                  transition: 'background 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
               >
-                ×
+                {saveStatus || 'Save 🔖'}
               </button>
             </div>
             

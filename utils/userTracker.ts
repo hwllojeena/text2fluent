@@ -7,10 +7,19 @@ export interface PracticeRecord {
   score: number;
 }
 
+export interface SavedVocab {
+  id: string;
+  word: string;
+  language: string;
+  definition: string;
+  dateAdded: string; // ISO string
+}
+
 export interface UserStats {
   streak: number;
   lastPracticeDate: string | null;
   history: PracticeRecord[];
+  savedVocab?: SavedVocab[]; // Optional for backward compatibility
 }
 
 const getStorageKey = (email: string) => `text2fluent_stats_${email}`;
@@ -20,9 +29,12 @@ export const getUserStats = (email: string): UserStats => {
   
   const data = localStorage.getItem(getStorageKey(email));
   if (data) {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    // Ensure backwards compatibility
+    if (!parsed.savedVocab) parsed.savedVocab = [];
+    return parsed;
   }
-  return { streak: 0, lastPracticeDate: null, history: [] };
+  return { streak: 0, lastPracticeDate: null, history: [], savedVocab: [] };
 };
 
 export const addPracticeRecord = (email: string, record: Omit<PracticeRecord, 'id' | 'date'>) => {
@@ -73,4 +85,33 @@ export const clearUserHistory = (email: string) => {
   if (typeof window === 'undefined') return;
   const stats = getUserStats(email);
   localStorage.setItem(getStorageKey(email), JSON.stringify({ ...stats, history: [] }));
+};
+
+export const saveVocab = (email: string, word: string, language: string, definition: string) => {
+  if (typeof window === 'undefined') return;
+
+  const stats = getUserStats(email);
+  
+  // Check if word already exists for this language
+  const exists = stats.savedVocab?.some(v => v.word === word && v.language === language);
+  if (exists) return; // Don't save duplicates
+
+  const newVocab: SavedVocab = {
+    id: Date.now().toString(),
+    word,
+    language,
+    definition,
+    dateAdded: new Date().toISOString()
+  };
+
+  const newStats: UserStats = {
+    ...stats,
+    savedVocab: [newVocab, ...(stats.savedVocab || [])]
+  };
+
+  localStorage.setItem(getStorageKey(email), JSON.stringify(newStats));
+};
+
+export const getSavedVocab = (email: string): SavedVocab[] => {
+  return getUserStats(email).savedVocab || [];
 };

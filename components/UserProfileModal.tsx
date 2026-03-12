@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUserStats, UserStats } from '@/utils/userTracker';
+import { getUserStats, getSavedVocab, UserStats, SavedVocab } from '@/utils/userTracker';
 import { useSession } from 'next-auth/react';
+import TestModal from './TestModal';
 
 interface UserProfileModalProps {
   onClose: () => void;
@@ -10,8 +11,12 @@ interface UserProfileModalProps {
 
 export default function UserProfileModal({ onClose }: UserProfileModalProps) {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<'account' | 'history'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'history' | 'vocab' | 'test'>('account');
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [savedVocab, setSavedVocab] = useState<SavedVocab[]>([]);
+  
+  // Test Modal State
+  const [activeTest, setActiveTest] = useState<{ languageId: string, level: string } | null>(null);
   
   // Account Form States
   const [oldPassword, setOldPassword] = useState('');
@@ -24,8 +29,9 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
   useEffect(() => {
     if (session?.user?.email) {
       setStats(getUserStats(session.user.email));
+      setSavedVocab(getSavedVocab(session.user.email));
     }
-  }, [session]);
+  }, [session, activeTab]);
 
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +58,44 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
     return map[id] || id;
   };
 
+  const getLevelName = (id: string) => {
+    const map: Record<string, string> = {
+      '1': 'Beginner', // Starter -> Beginner for test mapping
+      '2': 'Beginner', 
+      '3': 'Intermediate', 
+      '4': 'Advanced', 
+      '5': 'Advanced' // Fluent -> Advanced for test mapping
+    };
+    return map[id] || 'Beginner';
+  };
+
   const filteredHistory = stats?.history.filter(record => filterLang === 'all' || record.language === filterLang) || [];
+
+  // Group history by language and level to calculate test progress
+  const getTestProgress = () => {
+    if (!stats?.history) return [];
+    
+    const progress: Record<string, { count: number, language: string, level: string }> = {};
+    
+    stats.history.forEach(record => {
+      // To determine level, we can infer it roughly from scores or topics, or simplify by assuming tests are per language
+      // Here we group by language since we didn't track "level" in history. 
+      // For simplicity, Test unlocks per Language if they have >= 5 total practices in that language.
+      const key = `${record.language}`;
+      if (!progress[key]) {
+        progress[key] = { count: 0, language: record.language, level: 'Beginner' }; // Defaulting test level
+      }
+      progress[key].count += 1;
+      
+      // Upgrade test level based on practice count
+      if (progress[key].count >= 15) progress[key].level = 'Advanced';
+      else if (progress[key].count >= 10) progress[key].level = 'Intermediate';
+    });
+    
+    return Object.values(progress);
+  };
+
+  const testProgress = getTestProgress();
 
   return (
     <div style={{
@@ -78,7 +121,7 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--card-border)' }}>
-          {(['account', 'history'] as const).map(tab => (
+          {(['account', 'history', 'vocab', 'test'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -203,7 +246,137 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
           </div>
         )}
 
+        {/* Vocab Tab */}
+        {activeTab === 'vocab' && (
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Saved Vocabulary</h3>
+              <select 
+                className="premium-input" 
+                value={filterLang} 
+                onChange={e => setFilterLang(e.target.value)}
+                style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '1.1rem', fontWeight: 600 }}
+              >
+                <option value="all">All Languages</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="zh">🇨🇳 Mandarin</option>
+                <option value="es">🇪🇸 Spanish</option>
+                <option value="it">🇮🇹 Italian</option>
+                <option value="de">🇩🇪 German</option>
+              </select>
+            </div>
+
+            <div className="scrollbar-hide" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+              {savedVocab.filter(v => filterLang === 'all' || v.language === filterLang).length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>No saved vocabulary found for this selection.</p>
+              ) : (
+                savedVocab
+                  .filter(v => filterLang === 'all' || v.language === filterLang)
+                  .map(vocab => (
+                  <div key={vocab.id} style={{ padding: '1.2rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)', fontFamily: 'Lexend, sans-serif' }}>
+                        {vocab.word}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {getLanguageName(vocab.language)}
+                      </span>
+                    </div>
+                    
+                    <p style={{ fontSize: '1rem', color: 'var(--foreground)', lineHeight: 1.5, margin: 0, fontWeight: 300 }}>
+                      {vocab.definition}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Test Tab */}
+        {activeTab === 'test' && (
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+            <div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.5rem' }}>Language Proficiency Tests</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5 }}>
+                Complete at least 5 practice exercises in a language to unlock its Beginner test. Keep practicing to unlock higher level tests!
+              </p>
+            </div>
+
+            <div className="scrollbar-hide" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflowY: 'auto' }}>
+              {(['en', 'zh', 'es', 'it', 'de'] as const).map(langId => {
+                const progressData = testProgress.find(p => p.language === langId);
+                const count = progressData?.count || 0;
+                const level = progressData?.level || 'Beginner';
+                const isUnlocked = count >= 5;
+                const progressPercentage = Math.min(100, (count / 5) * 100);
+
+                return (
+                  <div key={langId} style={{ 
+                    padding: '1.5rem', 
+                    background: isUnlocked ? 'linear-gradient(to right, #f8fafc, #f1f5f9)' : '#f8fafc',
+                    borderRadius: '16px', 
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    opacity: isUnlocked ? 1 : 0.7
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 700, fontFamily: 'Lexend, sans-serif' }}>
+                        {getLanguageName(langId)} Test
+                      </span>
+                      {isUnlocked && (
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'white', background: 'var(--primary)', padding: '0.2rem 0.6rem', borderRadius: '20px' }}>
+                          {level} Level Available
+                        </span>
+                      )}
+                    </div>
+                    
+                    {!isUnlocked ? (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                          <span>Practice Progress</span>
+                          <span>{count} / 5</span>
+                        </div>
+                        <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${progressPercentage}%`, height: '100%', background: 'var(--primary)' }} />
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                          Complete {5 - count} more practices to unlock this test.
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--foreground)' }}>
+                          Ready to test your conversational skills?
+                        </p>
+                        <button 
+                          className="btn-primary"
+                          onClick={() => setActiveTest({ languageId: langId, level })}
+                          style={{ padding: '0.6rem 1.5rem', fontSize: '1rem' }}
+                        >
+                          Start Test
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
       </div>
+
+      {activeTest && (
+        <TestModal 
+          languageId={activeTest.languageId} 
+          level={activeTest.level} 
+          onClose={() => setActiveTest(null)} 
+        />
+      )}
     </div>
   );
 }
