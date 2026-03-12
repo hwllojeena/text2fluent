@@ -213,6 +213,18 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
           )}
         </div>
 
+        {!feedback && !isSpinning && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <button 
+              className="btn-primary" 
+              onClick={fetchPrompt}
+              style={{ background: 'var(--secondary)', color: 'var(--primary)', padding: '0.8rem 2rem', fontSize: '1rem', fontWeight: 600 }}
+            >
+              🔄 Spin New Topic
+            </button>
+          </div>
+        )}
+
         {!isSpinning && prompt && (
             <div style={{
               minHeight: '80px',
@@ -231,52 +243,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
             </div>
         )}
 
-        {languageId !== 'en' && !isSpinning && prompt && (
-          <div style={{ marginBottom: '2.5rem' }}>
-            <button 
-              onClick={() => setShowTranslation(!showTranslation)}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: 'var(--primary)', 
-                cursor: 'pointer', 
-                fontSize: '1.1rem', 
-                fontWeight: 500,
-                fontFamily: "'Welcome Darling', cursive",
-                textDecoration: 'underline',
-                opacity: 0.8
-              }}
-            >
-              {showTranslation ? 'Hide Translation' : 'Show English Translation'}
-            </button>
-            {showTranslation && (
-              <div className="animate-fade-in" style={{ 
-                marginTop: '1rem', 
-                padding: '1rem', 
-                background: '#f8fafc', 
-                borderRadius: '12px', 
-                fontSize: '1rem', 
-                color: 'var(--foreground)',
-                opacity: 0.9,
-                lineHeight: '1.5',
-                border: '1px solid #e2e8f0'
-              }}>
-                {translation || 'Translating...'}
-              </div>
-            )}
-          </div>
-        )}
-
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-          {!feedback && !isSpinning && (
-            <button 
-              className="btn-primary" 
-              onClick={fetchPrompt}
-              style={{ background: 'var(--secondary)', color: 'var(--primary)', padding: '0.8rem 2rem', fontSize: '1rem', fontWeight: 600 }}
-            >
-              🔄 Spin New Topic
-            </button>
-          )}
 
           <button 
             className={`btn-primary ${isListening ? 'listening' : ''}`}
@@ -298,6 +265,43 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
           >
             {isListening ? '🛑' : '🎤'}
           </button>
+
+          {languageId !== 'en' && !isSpinning && prompt && (
+            <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+              <button 
+                onClick={() => setShowTranslation(!showTranslation)}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--primary)', 
+                  cursor: 'pointer', 
+                  fontSize: '1.1rem', 
+                  fontWeight: 500,
+                  fontFamily: "'Welcome Darling', cursive",
+                  textDecoration: 'underline',
+                  opacity: 0.8
+                }}
+              >
+                {showTranslation ? 'Hide Translation' : 'Show English Translation'}
+              </button>
+              {showTranslation && (
+                <div className="animate-fade-in" style={{ 
+                  marginTop: '1rem', 
+                  padding: '1rem', 
+                  background: '#f8fafc', 
+                  borderRadius: '12px', 
+                  fontSize: '1rem', 
+                  color: 'var(--foreground)',
+                  opacity: 0.9,
+                  lineHeight: '1.5',
+                  border: '1px solid #e2e8f0',
+                  maxWidth: '500px'
+                }}>
+                  {translation || 'Translating...'}
+                </div>
+              )}
+            </div>
+          )}
 
 
           {feedback && (
