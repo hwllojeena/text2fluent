@@ -42,7 +42,13 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
   };
 
   const getLanguageName = (id: string) => {
-    const map: Record<string, string> = { en: 'English', zh: 'Mandarin', es: 'Spanish', it: 'Italian', de: 'German' };
+    const map: Record<string, string> = { 
+      en: '🇺🇸 English', 
+      zh: '🇨🇳 Mandarin', 
+      es: '🇪🇸 Spanish', 
+      it: '🇮🇹 Italian', 
+      de: '🇩🇪 German' 
+    };
     return map[id] || id;
   };
 
@@ -154,11 +160,11 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
                 style={{ width: 'auto', padding: '0.5rem 1rem' }}
               >
                 <option value="all">All Languages</option>
-                <option value="en">English</option>
-                <option value="zh">Mandarin</option>
-                <option value="es">Spanish</option>
-                <option value="it">Italian</option>
-                <option value="de">German</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="zh">🇨🇳 Mandarin</option>
+                <option value="es">🇪🇸 Spanish</option>
+                <option value="it">🇮🇹 Italian</option>
+                <option value="de">🇩🇪 German</option>
               </select>
             </div>
 
