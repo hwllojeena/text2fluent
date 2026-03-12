@@ -135,7 +135,6 @@ export async function GET(request: Request) {
   };
   const langName = langMap[lang] || lang;
 
-  // Function to get a fallback hardcoded prompt in case Gemini fails or isn't configured
   const getFallbackPrompt = () => {
     const languagePrompts = PROMPTS[lang] || PROMPTS['en'];
     const levelPrompts = (languagePrompts as any)[level] || (languagePrompts as any)['Beginner'];
@@ -144,22 +143,12 @@ export async function GET(request: Request) {
   };
 
   if(!genAI) {
-    console.warn("GEMINI_API_KEY is not configured or process.env is missing it. Falling back to hardcoded prompts.");
-    return NextResponse.json({ prompt: getFallbackPrompt() });
-  }
-
-  // Debug log for API Key (masked)
-  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
-  console.log(`API Key starts with: ${apiKey.substring(0, 6)}... (length: ${apiKey.length})`);
-  
-  if (!apiKey) {
-    console.warn("GEMINI_API_KEY is empty after trimming. Falling back.");
+    console.warn("GEMINI_API_KEY is not configured. Falling back.");
     return NextResponse.json({ prompt: getFallbackPrompt() });
   }
 
   try {
     console.log(`Generating AI text for Lang: ${langName}, Level: ${level}, Topic: ${topic}`);
-    // Construct prompt for the AI to generate a text paragraph
     let aiPrompt = `
 You are a language teacher creating continuous, natural reading and speaking practice material.
 Generate a cohesive text in ${langName}.
@@ -168,18 +157,16 @@ The topic is: "${topic}".
 
 Guidelines:
 - If the language is Mandarin Chinese (zh), output ONLY Chinese characters (no Pinyin).
-- If the level is "Starter", generate ONLY a very basic greeting or a single extremely simple sentence (4-8 words max). Example: "Hello, how are you today?" or "My name is John."
+- If the level is "Starter", generate ONLY a very basic greeting or a single extremely simple sentence (4-8 words max).
 - If the level is "Beginner", use simple vocabulary and short sentences (2-3 sentences).
 - If the level is "Intermediate", use more varied vocabulary, transitional phrases, and moderately complex sentences (3-4 sentences).
 - If the level is "Advanced", use rich vocabulary, idioms, and complex sentence structures (4-5 sentences).
-- If the level is "Fluent", generate real-world content like a formal news snippet, a professional business brief, or a complex academic abstract. Use highly sophisticated language and varied sentence structures (5-6 sentences).
+- If the level is "Fluent", generate real-world content like a formal news snippet, a professional business brief, or a complex academic abstract.
 - The text MUST be related to the topic "${topic}".
-- The output should be a single, natural-sounding paragraph just like an audiobook snippet or a short speech.
-- Provide ONLY the generated text in ${langName}. Do not provide English translations, introductions, or conversational fillers.
+- Provide ONLY the generated text in ${langName}.
     `.trim();
     
     let generatedText = "";
-    // Prioritize gemini-2.5-flash as verified by listing available models
     const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
     
     for (const modelName of modelsToTry) {
@@ -190,20 +177,17 @@ Guidelines:
         const result = await model.generateContent(aiPrompt);
         generatedText = result.response.text().trim();
       } catch (e: any) {
-        console.warn(`Model ${modelName} failed in generate: ${e.message}`);
+        console.warn(`Model ${modelName} failed: ${e.message}`);
       }
     }
 
     if (generatedText) {
-      console.log("Successfully generated AI text using Gemini.");
       return NextResponse.json({ prompt: generatedText });
     } else {
-      console.warn("AI generated an empty string or all models failed. Total fallback to hardcoded.");
       return NextResponse.json({ prompt: getFallbackPrompt() });
     }
   } catch (error) {
-    console.error("Gemini text generation error:", error);
-    // Fallback to hardcoded prompts if the API fails
+    console.error("Gemini error:", error);
     return NextResponse.json({ prompt: getFallbackPrompt() });
   }
 }
