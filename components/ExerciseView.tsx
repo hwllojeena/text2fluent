@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import InteractiveText from './InteractiveText';
 
 interface ExerciseProps {
   languageId: string;
   level: string;
   topic: string;
-  onBack: () => void;
 }
 
 // Declaring Web Speech API types for TypeScript
@@ -17,17 +17,35 @@ declare global {
   }
 }
 
-export default function ExerciseView({ languageId, level, topic, onBack }: ExerciseProps) {
+export default function ExerciseView({ languageId, level, topic }: ExerciseProps) {
   const [prompt, setPrompt] = useState<string>('');
   const [transcript, setTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState(false);
   const [feedback, setFeedback] = useState<{ score: number; color: string } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [displayText, setDisplayText] = useState<string>('');
+  const [wordStatuses, setWordStatuses] = useState<Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>>({});
+  const [matchedIndices, setMatchedIndices] = useState<Set<number>>(new Set());
+  const [lastMatchedIdx, setLastMatchedIdx] = useState<number>(-1);
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+
+  const recognitionRef = useRef<any>(null);
+  
+  // Refs for real-time matching to avoid stale closures
+  const statusesRef = useRef<Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>>({});
+  const matchedRef = useRef<Set<number>>(new Set());
+  const lastMatchedRef = useRef<number>(-1);
 
   const fetchPrompt = useCallback(async () => {
     setFeedback(null);
     setTranscript('');
+    setWordStatuses({});
+    statusesRef.current = {};
+    setMatchedIndices(new Set());
+    matchedRef.current = new Set();
+    setLastMatchedIdx(-1);
+    lastMatchedRef.current = -1;
     setIsSpinning(true);
 
     const placeholders = [
@@ -47,11 +65,26 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
       const data = await res.json();
       
       // Keep spinning for at least 800ms for visual effect
-      setTimeout(() => {
+      setTimeout(async () => {
         clearInterval(shuffleInterval);
         setPrompt(data.prompt);
         setDisplayText(data.prompt);
         setIsSpinning(false);
+        setTranslation(null);
+        setShowTranslation(false);
+
+        // Fetch translation for non-English prompts
+        if (languageId !== 'en') {
+          try {
+            const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(data.prompt)}&langpair=${languageId}|en`);
+            const transData = await transRes.json();
+            if (transData.responseData.translatedText) {
+              setTranslation(transData.responseData.translatedText);
+            }
+          } catch (e) {
+            console.error('Translation error', e);
+          }
+        }
       }, 800);
     } catch (err) {
       console.error('Failed to fetch prompt', err);
@@ -65,6 +98,21 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
   }, [fetchPrompt]);
 
   const startListening = () => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    // Reset state for a new session (Redo functionality)
+    setFeedback(null);
+    setTranscript('');
+    setWordStatuses({});
+    statusesRef.current = {};
+    setMatchedIndices(new Set());
+    matchedRef.current = new Set();
+    setLastMatchedIdx(-1);
+    lastMatchedRef.current = -1;
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert('Your browser does not support Speech Recognition. Please try Chrome or Edge.');
@@ -72,58 +120,141 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
     }
 
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = languageId === 'zh' ? 'zh-CN' : 
                       languageId === 'es' ? 'es-ES' : 
                       languageId === 'it' ? 'it-IT' : 
                       languageId === 'de' ? 'de-DE' : 'en-US';
     
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
 
     recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    
-    recognition.onresult = (event: any) => {
-      const current = event.resultIndex;
-      const transcriptValue = event.results[current][0].transcript;
-      setTranscript(transcriptValue.toLowerCase());
+    const localTranscriptRef = { current: '' };
 
-      if (event.results[current].isFinal) {
-        checkResult(transcriptValue.toLowerCase(), prompt.toLowerCase());
+    recognition.onresult = (event: any) => {
+      let transcriptValue = '';
+      for (let i = 0; i < event.results.length; ++i) {
+        transcriptValue += event.results[i][0].transcript.toLowerCase() + ' ';
       }
+      const finalTranscript = transcriptValue.trim();
+      setTranscript(finalTranscript);
+      localTranscriptRef.current = finalTranscript;
+
+      // Real-time matching logic
+      let targetTokens: string[] = [];
+      if (languageId === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+        const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
+        const segments = segmenter.segment(prompt);
+        targetTokens = Array.from(segments).map((s: any) => s.segment);
+      } else {
+        targetTokens = languageId === 'zh' ? 
+          prompt.split(/([\u4E00-\u9FFF]|[，。？！、：；“”‘’（）]|\s+)/).filter(Boolean) :
+          prompt.split(/(\s+)/);
+      }
+
+      // Use refs to avoid stale closures
+      const newStatuses = { ...statusesRef.current };
+      const newMatched = new Set(matchedRef.current);
+      let currentIdx = lastMatchedRef.current;
+      
+      // Look ahead up to 15 tokens to allow for skips
+      const lookAheadRange = 15;
+
+      targetTokens.forEach((token, idx) => {
+        const cleanToken = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
+        if (!cleanToken) return;
+
+        // Skip words already matched
+        if (newMatched.has(idx)) return;
+
+        // Lenient matching: Search for the word in the transcript
+        // We allow matching words that are ahead of our current position
+        if (idx > lastMatchedRef.current && idx <= lastMatchedRef.current + lookAheadRange) {
+          if (finalTranscript.includes(cleanToken)) {
+            newStatuses[idx] = 'correct';
+            newMatched.add(idx);
+            
+            // SKIP LOGIC: If we matched a word further ahead, mark all intermediate words as incorrect
+            for (let i = lastMatchedRef.current + 1; i < idx; i++) {
+              const prevClean = targetTokens[i].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
+              if (prevClean && !newMatched.has(i)) {
+                newStatuses[i] = 'incorrect';
+              }
+            }
+            
+            currentIdx = Math.max(currentIdx, idx);
+          }
+        }
+      });
+
+      // Update refs
+      statusesRef.current = newStatuses;
+      matchedRef.current = newMatched;
+      lastMatchedRef.current = currentIdx;
+
+      // Sync to state for UI re-render
+      setWordStatuses(newStatuses);
+      setMatchedIndices(newMatched);
+      setLastMatchedIdx(currentIdx);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+      
+      // Final calculation: Mark unmatched words as incorrect
+      let targetTokens: string[] = [];
+      if (languageId === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+        const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
+        const segments = segmenter.segment(prompt);
+        targetTokens = Array.from(segments).map((s: any) => s.segment);
+      } else {
+        targetTokens = languageId === 'zh' ? 
+          prompt.split(/([\u4E00-\u9FFF]|[，。？！、：；“”‘’（）]|\s+)/).filter(Boolean) :
+          prompt.split(/(\s+)/);
+      }
+      
+      const finalStatuses = { ...statusesRef.current };
+      tokensToWords(targetTokens).forEach((wordIdx) => {
+        if (!matchedRef.current.has(wordIdx)) {
+          finalStatuses[wordIdx] = 'incorrect';
+        }
+      });
+
+      statusesRef.current = finalStatuses;
+      setWordStatuses(finalStatuses);
+      
+      checkResult(localTranscriptRef.current, prompt.toLowerCase(), targetTokens, matchedRef.current);
     };
 
     recognition.start();
   };
 
-  const checkResult = (said: string, target: string) => {
-    // Basic similarity check (can be improved)
-    // Removing punctuation for comparison
-    const cleanSaid = said.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
-    const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
-    
-    // Simple word match ratio
-    const saidWords = cleanSaid.split(/\s+/);
-    const targetWords = cleanTarget.split(/\s+/);
-    let matches = 0;
-    
-    targetWords.forEach(word => {
-        if (saidWords.includes(word)) matches++;
+  // Helper to get indices of actual words (not just punctuation/spaces)
+  const tokensToWords = (tokens: string[]) => {
+    const wordIndices: number[] = [];
+    tokens.forEach((token, idx) => {
+      if (token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim()) {
+        wordIndices.push(idx);
+      }
     });
+    return wordIndices;
+  };
 
-    const score = (matches / targetWords.length) * 100;
+  const checkResult = (said: string, target: string, tokens: string[], matched: Set<number>) => {
+    const wordTokensCount = tokensToWords(tokens).length;
+    if (wordTokensCount === 0) return;
+
+    const score = (matched.size / wordTokensCount) * 100;
     setFeedback({
-      score: Math.round(score),
+      score: Math.min(100, Math.round(score)),
       color: score > 80 ? 'var(--success)' : score > 50 ? 'var(--secondary)' : 'var(--error)'
     });
   };
 
   return (
     <div className="premium-card animate-fade-in" style={{ textAlign: 'center' }}>
-      <button onClick={onBack} style={{ float: 'left', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}>
-        ← Menu
-      </button>
-      
       <div style={{ padding: '1rem 0' }}>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
           Speak this aloud:
@@ -143,8 +274,48 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
           textAlign: 'center',
           padding: '0 1rem'
         }}>
-          {displayText}
+          {isSpinning ? (
+            displayText
+          ) : (
+            <InteractiveText text={prompt} languageId={languageId} statuses={wordStatuses} />
+          )}
         </div>
+
+        {languageId !== 'en' && !isSpinning && prompt && (
+          <div style={{ marginBottom: '2.5rem' }}>
+            <button 
+              onClick={() => setShowTranslation(!showTranslation)}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: 'var(--primary)', 
+                cursor: 'pointer', 
+                fontSize: '1.1rem', 
+                fontWeight: 500,
+                fontFamily: "'Welcome Darling', cursive",
+                textDecoration: 'underline',
+                opacity: 0.8
+              }}
+            >
+              {showTranslation ? 'Hide Translation' : 'Show English Translation'}
+            </button>
+            {showTranslation && (
+              <div className="animate-fade-in" style={{ 
+                marginTop: '1rem', 
+                padding: '1rem', 
+                background: '#f8fafc', 
+                borderRadius: '12px', 
+                fontSize: '1rem', 
+                color: 'var(--foreground)',
+                opacity: 0.9,
+                lineHeight: '1.5',
+                border: '1px solid #e2e8f0'
+              }}>
+                {translation || 'Translating...'}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
           {!feedback && !isSpinning && (
@@ -160,7 +331,7 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
           <button 
             className={`btn-primary ${isListening ? 'listening' : ''}`}
             onClick={startListening}
-            disabled={isListening || isSpinning}
+            disabled={isSpinning}
             style={{ 
               width: '80px', 
               height: '80px', 
@@ -175,12 +346,9 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
               cursor: isSpinning ? 'not-allowed' : 'pointer'
             }}
           >
-            {isListening ? '...' : '🎤'}
+            {isListening ? '🛑' : '🎤'}
           </button>
 
-          <div style={{ minHeight: '3rem', fontStyle: 'italic', color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 500 }}>
-            {transcript ? `"${transcript}"` : <span style={{ color: '#94a3b8' }}>{isSpinning ? 'Spinning...' : 'Your speech will appear here...'}</span>}
-          </div>
 
           {feedback && (
             <div className="animate-fade-in" style={{ padding: '2rem', borderRadius: '24px', background: 'var(--secondary)', width: '100%', border: '1px solid #d1d9cc' }}>
@@ -201,15 +369,6 @@ export default function ExerciseView({ languageId, level, topic, onBack }: Exerc
           )}
         </div>
       </div>
-
-
-      <style jsx>{`
-        @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-      `}</style>
     </div>
   );
 }

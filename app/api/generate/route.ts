@@ -63,23 +63,23 @@ const PROMPTS: Record<string, Record<string, Record<string, string[]>>> = {
   zh: {
     Beginner: {
       "Daily conversation": [
-        "你好！我叫张伟，我是学生。我喜欢学习汉语，也喜欢交新朋友。今天天气很好，我想去公园散步，然后去书店买几本汉语书。我也很喜欢喝茶，你呢？(Nǐ hǎo! Wǒ jiào Zhāng Wěi, wǒ shì xuésheng. Wǒ xǐhuān xuéxí Hànyǔ, yě xǐhuān jiāo xīn péngyou. Jīntiān tiānqì hěn hǎo, wǒ xiǎng qù gōngyuán sànbù, ránhòu qù shūdiàn mǎi jǐ běn Hànyǔ shū. Wǒ yě hěn xǐhuān hē chá, nǐ ne?)",
-        "很高兴认识你！我正在学习中文，因为我想去中国旅游。我觉得汉字很有意思，但是发音有点难。我每天都听中文录音，希望我的汉语水平能越来越好。(Hěn gāoxìng rènshí nǐ! Wǒ zhèngzài xuéxí Zhōngwén, yīnwèi wǒ xiǎng qù Zhōngguó lǚyóu. Wǒ juéde Hànzì hěn yǒuyìsi, dànshì fāyīn yǒudiǎn nán. Wǒ měitiān dōu tīng Zhōngwén lùyīn, xīwàng wǒ de Hànyǔ shuǐpíng néng yuè lái yuè hǎo.)"
+        "你好！我叫张伟，我是学生。我喜欢学习汉语，也喜欢交新朋友。今天天气很好，我想去公园散步，然后去书店买几本汉语书。我也很喜欢喝茶，你呢？",
+        "很高兴认识你！我正在学习中文，因为我想去中国旅游. 我觉得汉字很有意思，但是发音有点难。我每天都听中文录音，希望我的汉语水平能越来越好。"
       ],
       "Travel": [
-        "请问，火车站怎么走？我想买两张去上海的高铁票。那里的车票可以在网上预订吗？我有点担心迷路，所以如果有地图的话就太好了。谢谢你的帮助！(Qǐngwèn, huǒchēzhàn zěnme zǒu? Wǒ xiǎng mǎi liǎng zhāng qù Shànghǎi de gāotiě piào. Nàlǐ de chēpiào kěyǐ zài wǎngshàng yùdìng ma? Wǒ yǒudiǎn dānxīn mílù, suǒyǐ rúguǒ yǒu dìtú de huà jiù tài hǎole. Xièxiè nǐ de bāngzhù!)",
-        "我想预订一家在那里的酒店，最好离市中心近一点。房间里有无线网络吗？我也想知道酒店是否提供早餐。如果你能推荐一些当地的好餐馆，我会非常感激。(Wǒ xiǎng yùdìng yījiā zài nàlǐ de jiǔdiàn, zuì hǎo lí shì zhōngxīn jìn yīdiǎn. Fángjiān lǐ yǒu wúxiàn wǎngluò ma? Wǒ yě xiǎng zhīdào jiǔdiàn shìfǒu tígōng zǎocān. Rúguǒ nǐ néng tuījiàn yīxiē dāngdì de hǎo cānguǎn, wǒ huì fēicháng gǎnjī.)"
+        "请问，火车站怎么走？我想买两张去上海的高铁票。那里的车票可以在网上预订吗？我有点担心迷路，所以如果有地图的话就太好了。谢谢你的帮助！",
+        "我想预订一家在那里的酒店，最好离市中心近一点。房间里有无线网络吗？我也想知道酒店是否提供早餐。如果你能推荐一些当地的好餐馆，我会非常感激。"
       ],
       "Academic purposes": [
-        "我打算明年去中国留学，所以现在正在努力准备汉语水平考试。我想学习中国的历史和文化，了解这个伟大的国家。虽然学习的过程很辛苦，但我相信努力一定会有回报的。(Wǒ dǎsuàn míngnián qù Zhōngguó liúxué, suǒyǐ xiànzài zhèngzài nǔlì zhǔnbèi Hànyǔ Shuǐpíng Kǎoshì. Wǒ xiǎng xuéxí Zhōngguó de lìshǐ hé wénhuà, liǎojiě zhège wěidà de guójiā. Suīrán xuéxí de guòchéng hěn xīnkǔ, dàn wǒ xiāngxìn nǔlì yīdìng huì yǒu huíbào de.)"
+        "我打算明年去中国留学，所以现在正在努力准备汉语水平考试。我想学习中国的历史和文化，了解这个伟大的国家。虽然学习的过程很辛苦，但我相信努力一定会有回报的。"
       ],
       "default": ["学习中文是一个很有趣的挑战。通过学习语言，我们可以更好地了解中国的文化和人民。希望大家都能在 Text2Fluent 平台上愉快地学习，不断提高自己的汉语口语能力。"]
     },
     Intermediate: {
-      "default": ["学习中文虽然很有挑战性，但是非常有趣。通过不断地练习和交流，你的听力、口语、阅读和写作能力都会得到全方位的提升。在 Text2Fluent 平台上，你可以选择不同的主题和难度，根据自己的兴趣和需求进行个性化学习。加油，坚持就是胜利！(Xuéxí Zhōngwén suīrán hěn yǒu tiǎozhàn xìng, dànshì fēicháng yǒuqù. Tōngguò bùduàn de liànxí hé jiāoliú, nǐ de tīnglì, kǒuyǔ, yuèdú hé xiězuò nénglì dōu huì dédào quánfāngwèi de tíshēng. Zài Text2Fluent píngtái shàng, nǐ kěyǐ xuǎnzé bùtóng de zhǔtí hé nándù, gēnjù zìjǐ de xìngqù hé xūqiú jìnxíng gèxìnghuà xuéxí. Jiāyóu, jiānchí jiùshì shènglì!)"]
+      "default": ["学习中文虽然很有挑战性，但是非常有趣。通过不断地练习和交流，你的听力、口语、阅读和写作能力都会得到全方位的提升。在 Text2Fluent 平台上，你可以选择不同的主题和难度，根据自己的兴趣和需求进行个性化学习。加油，坚持就是胜利！"]
     },
     Advanced: {
-      "default": ["全球化的进程极大地促进了跨文化交流与合作。在当今世界，掌握多种语言不仅是一种竞争优势，更是理解不同文化、促进国际友好交流的重要工具。我们应该保持开放的心态，不断学习和探索，为构建人类命运共同体贡献自己的力量。(Quánqiúhuà de jìnchéng jídà de cùjìnle kuà wénhuà jiāoliú yǔ hézuò. Zài dāngjīn shìjiè, zhǎngwò duōzhǒng yǔyán bùjǐn shì yīzhǒng jìngzhēng yōushì, gèng shì lǐjiě bùtóng wénhuà, cùjìn guójì yǒuhǎo jiāoliú de zhòngyào gōngjù. Wǒmen yīnggāi bǎochí kāifàng de xīntài, bùduàn xuéxí hé tànsuǒ, wèi gòujiàn rénlèi mìngyùn gòngtóngtǐ gòngxiàn zìjǐ de lìliàng.)"]
+      "default": ["全球化的进程极大的促进了跨文化交流与合作。在当今世界，掌握多种语言不仅是一种竞争优势，更是理解不同文化、促进国际友好交流的重要工具。我们应该保持开放的心态，不断学习和探索，为构建人类命运共同体贡献自己的力量。"]
     }
   }
 };
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
   const languagePrompts = PROMPTS[lang] || PROMPTS['en'];
   const levelPrompts = (languagePrompts as any)[level] || (languagePrompts as any)['Beginner'];
   const topicPrompts = (levelPrompts as any)[topic] || (levelPrompts as any)['Daily conversation'] || (levelPrompts as any)['default'];
-  
+
   const randomPrompt = topicPrompts[Math.floor(Math.random() * topicPrompts.length)];
 
   return NextResponse.json({ prompt: randomPrompt });

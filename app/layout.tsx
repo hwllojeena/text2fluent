@@ -3,7 +3,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "Text2Fluent | Master Languages by Speaking",
+  title: "Text2Fluent | Speak your way to fluency",
   description: "Learn languages naturally by speaking aloud with AI-generated scenarios.",
 };
 

@@ -14,7 +14,7 @@ const LANGUAGES = [
 ];
 
 const DIFFICULTIES = [
-  { id: '1', name: 'Alphabets' },
+  { id: '1', name: 'Starter' },
   { id: '2', name: 'Beginner' },
   { id: '3', name: 'Intermediate' },
   { id: '4', name: 'Advanced' },
@@ -49,15 +49,15 @@ export default function Practice() {
         const parsedData = JSON.parse(data);
         if (parsedData.completed) {
           setOnboardingData(parsedData);
-          
+
           // Initialize filters from onboarding data
           setSelectedLang(parsedData.selectedLang || 'en');
-          
+
           // Map stored 1-6 levels to our 1-5 UI levels
           const initialLevelId = parsedData.selectedLevel === '6' ? '1' : parsedData.selectedLevel || '1';
           setSelectedLevelId(initialLevelId);
           setSelectedTopic(parsedData.selectedGoal || 'Daily conversation');
-          
+
           setLoading(false);
         } else {
           router.push(parsedData.selectedLevel === '6' ? '/onboarding/pretest' : '/onboarding');
@@ -101,14 +101,14 @@ export default function Practice() {
           <p>3) Build your fluency</p>
         </div>
 
-        <button 
+        <button
           onClick={handleSignOut}
-          style={{ 
-            marginTop: '4rem', 
-            background: 'none', 
-            border: 'none', 
-            color: 'var(--primary)', 
-            cursor: 'pointer', 
+          style={{
+            marginTop: '4rem',
+            background: 'none',
+            border: 'none',
+            color: 'var(--primary)',
+            cursor: 'pointer',
             fontWeight: 500,
             fontSize: '1.2rem',
             textAlign: 'left',
@@ -121,13 +121,13 @@ export default function Practice() {
 
       <section className="right-panel">
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
-          
+
           {/* Filters Row */}
-          <div className="animate-fade-in" style={{ 
-            display: 'flex', 
-            gap: '1rem', 
-            width: '100%', 
-            maxWidth: '500px',
+          <div className="animate-fade-in" style={{
+            display: 'flex',
+            gap: '1rem',
+            width: '100%',
+            maxWidth: '700px',
             background: 'rgba(255, 255, 255, 0.5)',
             padding: '1rem',
             borderRadius: '20px',
@@ -135,8 +135,8 @@ export default function Practice() {
           }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Language</label>
-              <select 
-                value={selectedLang} 
+              <select
+                value={selectedLang}
                 onChange={(e) => setSelectedLang(e.target.value)}
                 className="premium-input"
                 style={{ padding: '0.6rem 1rem', fontSize: '1rem' }}
@@ -147,8 +147,8 @@ export default function Practice() {
 
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Difficulty</label>
-              <select 
-                value={selectedLevelId} 
+              <select
+                value={selectedLevelId}
                 onChange={(e) => setSelectedLevelId(e.target.value)}
                 className="premium-input"
                 style={{ padding: '0.6rem 1rem', fontSize: '1rem' }}
@@ -159,8 +159,8 @@ export default function Practice() {
 
             <div style={{ flex: 1.2 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Topic</label>
-              <select 
-                value={selectedTopic} 
+              <select
+                value={selectedTopic}
                 onChange={(e) => setSelectedTopic(e.target.value)}
                 className="premium-input"
                 style={{ padding: '0.6rem 1rem', fontSize: '1rem' }}
@@ -170,14 +170,10 @@ export default function Practice() {
             </div>
           </div>
 
-          <ExerciseView 
-            languageId={selectedLang} 
-            level={getMappedLevel(selectedLevelId)} 
+          <ExerciseView
+            languageId={selectedLang}
+            level={getMappedLevel(selectedLevelId)}
             topic={selectedTopic}
-            onBack={() => {
-                localStorage.removeItem('text2fluent_onboarding');
-                router.push('/onboarding');
-            }} 
           />
         </div>
       </section>

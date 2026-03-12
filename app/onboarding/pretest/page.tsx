@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import InteractiveText from '@/components/InteractiveText';
 
 const TEST_PHASES = [
   { level: 'Beginner', difficulty: 'Beginner' },
@@ -21,6 +22,18 @@ export default function Pretest() {
   const [transcript, setTranscript] = useState('');
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ score: number; color: string } | null>(null);
+  const [wordStatuses, setWordStatuses] = useState<Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>>({});
+  const [matchedIndices, setMatchedIndices] = useState<Set<number>>(new Set());
+  const [lastMatchedIdx, setLastMatchedIdx] = useState<number>(-1);
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+
+  const recognitionRef = useRef<any>(null);
+  
+  // Refs for real-time matching to avoid stale closures
+  const statusesRef = useRef<Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>>({});
+  const matchedRef = useRef<Set<number>>(new Set());
+  const lastMatchedRef = useRef<number>(-1);
 
   useEffect(() => {
     const data = localStorage.getItem('text2fluent_onboarding');
@@ -36,10 +49,30 @@ export default function Pretest() {
     if (!onboardingData) return;
     setFeedback(null);
     setTranscript('');
+    setWordStatuses({});
+    statusesRef.current = {};
+    setMatchedIndices(new Set());
+    matchedRef.current = new Set();
+    setLastMatchedIdx(-1);
+    lastMatchedRef.current = -1;
     try {
       const res = await fetch(`/api/generate?lang=${onboardingData.selectedLang}&level=${difficulty}`);
       const data = await res.json();
       setCurrentPrompt(data.prompt);
+      setTranslation(null);
+      setShowTranslation(false);
+
+      if (onboardingData.selectedLang !== 'en') {
+        try {
+          const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(data.prompt)}&langpair=${onboardingData.selectedLang}|en`);
+          const transData = await transRes.json();
+          if (transData.responseData.translatedText) {
+            setTranslation(transData.responseData.translatedText);
+          }
+        } catch (e) {
+          console.error('Translation error', e);
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch test prompt', err);
     }
@@ -52,6 +85,21 @@ export default function Pretest() {
   }, [onboardingData, phase, fetchTestPrompt]);
 
   const startListening = () => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    // Reset state for a new session (Redo functionality)
+    setFeedback(null);
+    setTranscript('');
+    setWordStatuses({});
+    statusesRef.current = {};
+    setMatchedIndices(new Set());
+    matchedRef.current = new Set();
+    setLastMatchedIdx(-1);
+    lastMatchedRef.current = -1;
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert('Speech Recognition not supported');
@@ -59,38 +107,128 @@ export default function Pretest() {
     }
 
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = onboardingData.selectedLang === 'zh' ? 'zh-CN' :
       onboardingData.selectedLang === 'es' ? 'es-ES' :
         onboardingData.selectedLang === 'it' ? 'it-IT' :
           onboardingData.selectedLang === 'de' ? 'de-DE' : 'en-US';
 
     recognition.interimResults = true;
+    recognition.continuous = true;
+    const localTranscriptRef = { current: '' };
+
     recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+      
+      // Final calculation: Mark unmatched words as incorrect
+      let targetTokens: string[] = [];
+      if (onboardingData.selectedLang === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+        const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
+        const segments = segmenter.segment(currentPrompt);
+        targetTokens = Array.from(segments).map((s: any) => s.segment);
+      } else {
+        targetTokens = onboardingData.selectedLang === 'zh' ? 
+          currentPrompt.split(/([\u4E00-\u9FFF]|[，。？！、：；“”指標]|\s+)/).filter(Boolean) :
+          currentPrompt.split(/(\s+)/);
+      }
+
+      const finalStatuses = { ...statusesRef.current };
+      tokensToWords(targetTokens).forEach((wordIdx) => {
+        if (!matchedRef.current.has(wordIdx)) {
+          finalStatuses[wordIdx] = 'incorrect';
+        }
+      });
+
+      statusesRef.current = finalStatuses;
+      setWordStatuses(finalStatuses);
+
+      calculateScore(localTranscriptRef.current, targetTokens, matchedRef.current);
+    };
 
     recognition.onresult = (event: any) => {
-      const current = event.resultIndex;
-      const transcriptValue = event.results[current][0].transcript;
-      setTranscript(transcriptValue.toLowerCase());
-
-      if (event.results[current].isFinal) {
-        calculateScore(transcriptValue.toLowerCase());
+      let transcriptValue = '';
+      for (let i = 0; i < event.results.length; ++i) {
+        transcriptValue += event.results[i][0].transcript.toLowerCase() + ' ';
       }
+      const finalTranscript = transcriptValue.trim();
+      setTranscript(finalTranscript);
+      localTranscriptRef.current = finalTranscript;
+
+      let targetTokens: string[] = [];
+      if (onboardingData.selectedLang === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+        const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
+        const segments = segmenter.segment(currentPrompt);
+        targetTokens = Array.from(segments).map((s: any) => s.segment);
+      } else {
+        targetTokens = onboardingData.selectedLang === 'zh' ? 
+          currentPrompt.split(/([\u4E00-\u9FFF]|[，。？！、：；“”指標]|\s+)/).filter(Boolean) :
+          currentPrompt.split(/(\s+)/);
+      }
+
+      // Use refs to avoid stale closures
+      const newStatuses = { ...statusesRef.current };
+      const newMatched = new Set(matchedRef.current);
+      let currentIdx = lastMatchedRef.current;
+      
+      const lookAheadRange = 15;
+
+      targetTokens.forEach((token, idx) => {
+        const cleanToken = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
+        if (!cleanToken) return;
+        
+        if (newMatched.has(idx)) return;
+
+        // Lenient matching window
+        if (idx > lastMatchedRef.current && idx <= lastMatchedRef.current + lookAheadRange) {
+          if (finalTranscript.includes(cleanToken)) {
+            newStatuses[idx] = 'correct';
+            newMatched.add(idx);
+
+            // SKIP LOGIC: Mark intermediate words as incorrect
+            for (let i = lastMatchedRef.current + 1; i < idx; i++) {
+              const prevClean = targetTokens[i].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
+              if (prevClean && !newMatched.has(i)) {
+                newStatuses[i] = 'incorrect';
+              }
+            }
+
+            currentIdx = Math.max(currentIdx, idx);
+          }
+        }
+      });
+
+      // Update refs
+      statusesRef.current = newStatuses;
+      matchedRef.current = newMatched;
+      lastMatchedRef.current = currentIdx;
+
+      // Sync to state for UI re-render
+      setWordStatuses(newStatuses);
+      setMatchedIndices(newMatched);
+      setLastMatchedIdx(currentIdx);
     };
 
     recognition.start();
   };
 
-  const calculateScore = (said: string) => {
-    const target = currentPrompt.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
-    const cleanSaid = said.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+  // Helper to get indices of actual words
+  const tokensToWords = (tokens: string[]) => {
+    const wordIndices: number[] = [];
+    tokens.forEach((token, idx) => {
+      if (token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim()) {
+        wordIndices.push(idx);
+      }
+    });
+    return wordIndices;
+  };
 
-    const saidWords = cleanSaid.split(/\s+/);
-    const targetWords = target.split(/\s+/);
-    let matches = 0;
-    targetWords.forEach(w => { if (saidWords.includes(w)) matches++; });
+  const calculateScore = (said: string, tokens: string[], matched: Set<number>) => {
+    const wordTokensCount = tokensToWords(tokens).length;
+    if (wordTokensCount === 0) return;
 
-    const score = Math.round((matches / targetWords.length) * 100);
+    const score = Math.round((matched.size / wordTokensCount) * 100);
     setScores(prev => [...prev, score]);
     setFeedback({
       score,
@@ -170,15 +308,55 @@ export default function Pretest() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
               Speak this aloud:
             </p>
-            <h2 style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', marginBottom: '2rem', lineHeight: '1.3', color: 'var(--foreground)', fontWeight: 500 }}>
-              {currentPrompt}
-            </h2>
+            <div style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', marginBottom: '2rem', lineHeight: '1.3', color: 'var(--foreground)', fontWeight: 500 }}>
+              <InteractiveText 
+                text={currentPrompt} 
+                languageId={onboardingData?.selectedLang || 'en'} 
+                statuses={wordStatuses}
+              />
+            </div>
+
+            {onboardingData?.selectedLang !== 'en' && currentPrompt && (
+              <div style={{ marginBottom: '2.5rem' }}>
+                <button 
+                  onClick={() => setShowTranslation(!showTranslation)}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: 'var(--primary)', 
+                    cursor: 'pointer', 
+                    fontSize: '1.1rem', 
+                    fontWeight: 500,
+                    fontFamily: "'Welcome Darling', cursive",
+                    textDecoration: 'underline',
+                    opacity: 0.8
+                  }}
+                >
+                  {showTranslation ? 'Hide Translation' : 'Show English Translation'}
+                </button>
+                {showTranslation && (
+                  <div className="animate-fade-in" style={{ 
+                    marginTop: '1rem', 
+                    padding: '1rem', 
+                    background: '#f8fafc', 
+                    borderRadius: '12px', 
+                    fontSize: '1rem', 
+                    color: 'var(--foreground)',
+                    opacity: 0.9,
+                    lineHeight: '1.5',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    {translation || 'Translating...'}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
               <button
                 className={`btn-primary ${isListening ? 'listening' : ''}`}
                 onClick={startListening}
-                disabled={isListening || !!feedback}
+                disabled={!!feedback && !isListening}
                 style={{
                   width: '80px',
                   height: '80px',
@@ -189,15 +367,12 @@ export default function Pretest() {
                   background: isListening ? 'var(--error)' : 'var(--primary)',
                   boxShadow: isListening ? '0 0 0 0 rgba(239, 68, 68, 0.4)' : '0 10px 20px rgba(30, 58, 138, 0.2)',
                   animation: isListening ? 'pulse 1.5s infinite' : 'none',
-                  opacity: !!feedback ? 0.3 : 1
+                  opacity: !!feedback && !isListening ? 0.3 : 1
                 }}
               >
-                {isListening ? '...' : '🎤'}
+                {isListening ? '🛑' : '🎤'}
               </button>
 
-              <div style={{ minHeight: '3rem', fontStyle: 'italic', color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 500 }}>
-                {transcript ? `"${transcript}"` : <span style={{ color: '#94a3b8' }}>Your speech will appear here...</span>}
-              </div>
 
               {!feedback && !isListening && (
                 <button 
@@ -236,14 +411,6 @@ export default function Pretest() {
               )}
             </div>
           </div>
-
-          <style jsx>{`
-            @keyframes pulse {
-              0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-              70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); }
-              100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-            }
-          `}</style>
         </div>
       </section>
     </div>

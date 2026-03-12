@@ -68,7 +68,7 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4rem 4rem 2rem 4rem;
+  padding: 4rem 10rem 2rem 4rem;
   background-color: rgba(255, 255, 255, 0.3);
 }
 
@@ -106,7 +106,7 @@ h1, h2, h3, h4 {
   padding: 3rem;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.03);
   width: 100%;
-  max-width: 500px;
+  max-width: 700px;
 }
 
 .premium-input {
@@ -151,7 +151,7 @@ h1, h2, h3, h4 {
   left: 0;
   right: 0;
   z-index: 100;
-  padding: 1.5rem 4rem 1.5rem 10rem;
+  padding: 1.5rem 10rem 1.5rem 10rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -159,7 +159,7 @@ h1, h2, h3, h4 {
 }
 
 .main-footer {
-  padding: 1rem 4rem 2rem 10rem;
+  padding: 1rem 10rem 2rem 10rem;
   font-family: 'Welcome Darling', cursive;
   font-size: 1.25rem;
   opacity: 0.6;
@@ -271,4 +271,51 @@ h1, h2, h3, h4 {
   .premium-card {
     padding: 1.2rem;
   }
+}
+
+/* Component Specific Animations */
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.btn-primary.listening {
+  animation: pulse-red 1.5s infinite !important;
+  background-color: var(--error) !important;
+}
+
+/* Interactive Text Styles */
+.interactive-word {
+  cursor: pointer;
+  padding: 2px 0;
+  border-radius: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+  color: inherit;
+}
+
+.interactive-word:hover {
+  background: var(--secondary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.premium-tooltip {
+  position: absolute;
+  background: white;
+  padding: 1.2rem;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+  z-index: 1000;
+  min-width: 240px;
+  max-width: 320px;
+  text-align: left;
+  animation: tooltipIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translate(-50%, -90%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
