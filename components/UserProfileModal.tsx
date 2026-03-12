@@ -10,7 +10,7 @@ interface UserProfileModalProps {
 
 export default function UserProfileModal({ onClose }: UserProfileModalProps) {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState<'account' | 'streak' | 'history'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'history'>('account');
   const [stats, setStats] = useState<UserStats | null>(null);
   
   // Account Form States
@@ -72,7 +72,7 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--card-border)' }}>
-          {(['account', 'streak', 'history'] as const).map(tab => (
+          {(['account', 'history'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -93,6 +93,22 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
         {/* Account Tab */}
         {activeTab === 'account' && (
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            
+            <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'white', padding: '1rem', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', minWidth: '100px' }}>
+                <div style={{ fontSize: '2.5rem', lineHeight: 1, marginBottom: '0.2rem' }}>🔥</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f97316' }}>{stats?.streak || 0}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Streak</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '0.2rem', fontWeight: 500 }}>
+                  {stats?.streak && stats.streak > 0 
+                    ? "You're on fire! Keep it up." 
+                    : "Complete an exercise to start your streak!"}
+                </p>
+              </div>
+            </div>
+
             <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.2rem', textTransform: 'uppercase', fontWeight: 600 }}>Name</p>
               <p style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--foreground)', marginBottom: '1rem' }}>{session?.user?.name || 'User'}</p>
@@ -123,22 +139,7 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
           </div>
         )}
 
-        {/* Streak Tab */}
-        {activeTab === 'streak' && (
-          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', padding: '2rem 0' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '5rem', lineHeight: 1, marginBottom: '0.5rem' }}>🔥</div>
-              <div style={{ fontSize: '3rem', fontWeight: 800, color: '#f97316' }}>{stats?.streak || 0}</div>
-              <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Day Streak</div>
-            </div>
-            
-            <p style={{ color: 'var(--foreground)', opacity: 0.8, textAlign: 'center', maxWidth: '80%' }}>
-              {stats?.streak && stats.streak > 0 
-                ? "You're on fire! Keep practicing every day to maintain your streak." 
-                : "Complete a practice exercise today to start your streak!"}
-            </p>
-          </div>
-        )}
+        {/* Streak Tab is merged into Account Tab */}
 
         {/* History Tab */}
         {activeTab === 'history' && (
