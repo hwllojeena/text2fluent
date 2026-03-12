@@ -66,7 +66,7 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
       <div 
         className="premium-card animate-fade-in scrollbar-hide" 
         style={{ 
-          width: '90%', maxWidth: '600px', maxHeight: '85vh', 
+          width: '90%', maxWidth: '800px', maxHeight: '85vh', 
           overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column' 
         }}
         onClick={e => e.stopPropagation()}
@@ -157,7 +157,7 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
                 className="premium-input" 
                 value={filterLang} 
                 onChange={e => setFilterLang(e.target.value)}
-                style={{ width: 'auto', padding: '0.5rem 1rem' }}
+                style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '1.1rem', fontWeight: 600 }}
               >
                 <option value="all">All Languages</option>
                 <option value="en">🇺🇸 English</option>
