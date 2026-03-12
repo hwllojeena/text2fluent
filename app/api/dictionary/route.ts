@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     };
     const langName = langMap[languageId] || languageId;
 
-    // If Gemini is not configured, fallback to a simple error informing the user/developer
+    // If Gemini is not configured, fallback 
     if (!genAI) {
       return NextResponse.json({ 
         definition: null,
@@ -32,10 +32,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
     // Construct a prompt that asks for a context-aware definition
-    const prompt = `
+    const apiPrompt = `
 You are a highly intelligent and precise dictionary assistant for language learners.
 The user is learning ${langName}. They clicked on the word "${word}" within the following sentence:
 "${context}"
@@ -46,10 +44,30 @@ If the word is a part of a larger fixed phrase or idiom in that sentence, define
 Keep your answer to ONLY the definition (1-2 sentences maximum). Do not include any conversational filler like "The definition is...".
     `.trim();
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
+    let definitionText = "";
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
 
-    return NextResponse.json({ definition: responseText });
+    for (const modelName of modelsToTry) {
+      if (definitionText) break;
+      try {
+        console.log(`Trying model (dictionary): ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(apiPrompt);
+        definitionText = result.response.text().trim();
+      } catch (e: any) {
+        console.warn(`Model ${modelName} failed in dictionary: ${e.message}`);
+      }
+    }
+
+    if (definitionText) {
+      return NextResponse.json({ definition: definitionText });
+    } else {
+      return NextResponse.json({ 
+        definition: null,
+        error: "All AI models failed",
+        needsFallback: true 
+      });
+    }
 
   } catch (error) {
     console.error("Gemini dictionary error:", error);

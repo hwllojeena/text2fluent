@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 const TEST_QUESTIONS: Record<string, Record<string, string[]>> = {
   en: {
@@ -65,7 +68,7 @@ const TEST_QUESTIONS: Record<string, Record<string, string[]>> = {
   },
   de: {
     Beginner: [
-      "Kannst du dich vorstellen und mir von deinem Hobby erzählen? (Can you introduce yourself and tell me about your hobby?)",
+      "Kannst du dich vorstellen und mir von deinem Hobby erzählen? (Kannst du dich vorstellen und mir von deinem Hobby erzählen?)",
       "Was isst und trinkst du gerne zum Frühstück? (What do you like to eat and drink for breakfast?)"
     ],
     Intermediate: [
@@ -83,11 +86,62 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const lang = searchParams.get('lang') || 'en';
   const levelStr = searchParams.get('level') || 'Beginner';
-  
-  const languageQuestions = TEST_QUESTIONS[lang] || TEST_QUESTIONS['en'];
-  const levelQuestions = languageQuestions[levelStr] || languageQuestions['Beginner'] || TEST_QUESTIONS['en']['Beginner'];
 
-  const randomQuestion = levelQuestions[Math.floor(Math.random() * levelQuestions.length)];
+  const langMap: Record<string, string> = {
+    en: 'English',
+    zh: 'Mandarin Chinese',
+    es: 'Spanish',
+    it: 'Italian',
+    de: 'German'
+  };
+  const langName = langMap[lang] || lang;
 
-  return NextResponse.json({ question: randomQuestion });
+  const getFallbackQuestion = () => {
+    const languageQuestions = TEST_QUESTIONS[lang] || TEST_QUESTIONS['en'];
+    const levelQuestions = languageQuestions[levelStr] || languageQuestions['Beginner'] || TEST_QUESTIONS['en']['Beginner'];
+    return levelQuestions[Math.floor(Math.random() * levelQuestions.length)];
+  };
+
+  if (!genAI) {
+    return NextResponse.json({ question: getFallbackQuestion() });
+  }
+
+  try {
+    const apiPrompt = `
+You are a language examiner. Generate a unique test question (essay or conversation prompt) for a student learning ${langName}.
+The student's level is: ${levelStr}.
+
+Guidelines:
+- The question should be in ${langName}.
+- If the language is Mandarin Chinese (zh), output ONLY Chinese characters.
+- If the level is "Starter", ask a very basic question (e.g., "What is your name?" or "How are you?").
+- If the level is "Fluent", ask a complex, thought-provoking question about global news, philosophy, or specialized professional topics.
+- The question should encourage the student to speak or write. (Starter: 1 sentence; Beginner: 1-2 sentences; Intermediate: 3-4 sentences; Advanced/Fluent: 5+ sentences).
+- Provide ONLY the question text in ${langName}. Do not include English translations, instructions, or conversational fillers.
+    `.trim();
+
+    let questionText = "";
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+
+    for (const modelName of modelsToTry) {
+      if (questionText) break;
+      try {
+        console.log(`Trying model (test): ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(apiPrompt);
+        questionText = result.response.text().trim();
+      } catch (e: any) {
+        console.warn(`Model ${modelName} failed in test generate: ${e.message}`);
+      }
+    }
+
+    if (questionText) {
+      return NextResponse.json({ question: questionText });
+    } else {
+      return NextResponse.json({ question: getFallbackQuestion() });
+    }
+  } catch (error) {
+    console.error("Gemini test generation error:", error);
+    return NextResponse.json({ question: getFallbackQuestion() });
+  }
 }

@@ -93,11 +93,10 @@ export default function Practice() {
     );
   }
 
-  // Map 1-5 to Beginner/Intermediate/Advanced for the component
+  // Map 1-5 to their respective names for the AI API
   const getMappedLevel = (id: string) => {
-    if (id === '1' || id === '2') return 'Beginner';
-    if (id === '3') return 'Intermediate';
-    return 'Advanced';
+    const level = DIFFICULTIES.find(d => d.id === id);
+    return level ? level.name : 'Beginner';
   };
 
   return (

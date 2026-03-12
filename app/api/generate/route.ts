@@ -84,6 +84,39 @@ const PROMPTS: Record<string, Record<string, Record<string, string[]>>> = {
     Advanced: {
       "default": ["全球化的进程极大的促进了跨文化交流与合作。在当今世界，掌握多种语言不仅是一种竞争优势，更是理解不同文化、促进国际友好交流的重要工具。我们应该保持开放的心态，不断学习和探索，为构建人类命运共同体贡献自己的力量。"]
     }
+  },
+  es: {
+    Beginner: {
+      "Daily conversation": [
+        "¡Hola! Me llamo Maria y soy de Madrid. Me gusta mucho viajar y conocer gente nueva de todo el mundo. Hoy voy al parque con mis amigos para disfrutar del sol y comer pizza.",
+        "Buenos días. Quisiera pedir un café con leche y un cruasán, por favor. ¿Tienen fruta fresca hoy? Siempre empiezo mi día con un buen desayuno antes de ir a trabajar."
+      ],
+      "default": ["¡Bienvenido a Text2Fluent! Aprender un nuevo idioma es una aventura maravillosa."]
+    },
+    Intermediate: { "default": ["Aprender español requiere paciencia y mucha práctica diaria. ¡Sigue adelante!"] },
+    Advanced: { "default": ["La literatura española es rica y variada, ofreciendo una perspectiva única del mundo."] }
+  },
+  it: {
+    Beginner: {
+      "Daily conversation": [
+        "Ciao! Mi chiamo Luca e vengo da Roma. Amo la cucina italiana e imparare nuove lingue. Oggi vado in centro per incontrare i miei amici e bere un espresso.",
+        "Buongiorno! Vorrei ordinare un cappuccino e un cornetto alla crema, per favore. Avete della frutta fresca? Di solito inizio la mia giornata con una colazione leggera."
+      ],
+      "default": ["Benvenuti su Text2Fluent! Imparare l'italiano è un viaggio bellissimo."]
+    },
+    Intermediate: { "default": ["La lingua italiana è piena di sfumature e cultura. Continua a fare pratica ogni giorno!"] },
+    Advanced: { "default": ["La storia dell'arte italiana ha influenzato il mondo intero per secoli."] }
+  },
+  de: {
+    Beginner: {
+      "Daily conversation": [
+        "Hallo! Ich heiße Markus und komme aus Berlin. Ich lerne gerne neue Sprachen und treffe Freunde im Park. Heute trinke ich einen Kaffee und lese ein Buch.",
+        "Guten Morgen! Ich hätte gerne einen Kaffee und ein Croissant, bitte. Haben Sie heute frisches Obst? Ich beginne meinen Tag gerne mit einem gesunden Frühstück."
+      ],
+      "default": ["Willkommen bei Text2Fluent! Deutsch zu lernen ist eine tolle Herausforderung."]
+    },
+    Intermediate: { "default": ["Deutsch ist eine präzise Sprache. Mit täglicher Übung wirst du schnell Fortschritte machen!"] },
+    Advanced: { "default": ["Die deutsche Philosophie und Literatur haben die europäische Geistesgeschichte geprägt."] }
   }
 };
 
@@ -111,38 +144,62 @@ export async function GET(request: Request) {
   };
 
   if(!genAI) {
-    console.warn("GEMINI_API_KEY is not configured. Falling back to hardcoded prompts.");
+    console.warn("GEMINI_API_KEY is not configured or process.env is missing it. Falling back to hardcoded prompts.");
+    return NextResponse.json({ prompt: getFallbackPrompt() });
+  }
+
+  // Debug log for API Key (masked)
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+  console.log(`API Key starts with: ${apiKey.substring(0, 6)}... (length: ${apiKey.length})`);
+  
+  if (!apiKey) {
+    console.warn("GEMINI_API_KEY is empty after trimming. Falling back.");
     return NextResponse.json({ prompt: getFallbackPrompt() });
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    
+    console.log(`Generating AI text for Lang: ${langName}, Level: ${level}, Topic: ${topic}`);
     // Construct prompt for the AI to generate a text paragraph
     let aiPrompt = `
 You are a language teacher creating continuous, natural reading and speaking practice material.
-Generate a cohesive paragraph (3 to 6 sentences maximum) in ${langName}.
+Generate a cohesive text in ${langName}.
 The difficulty level is: ${level}.
 The topic is: "${topic}".
 
 Guidelines:
 - If the language is Mandarin Chinese (zh), output ONLY Chinese characters (no Pinyin).
-- If the level is Beginner, use simple vocabulary, short sentences, and everyday grammar.
-- If the level is Intermediate, use more varied vocabulary, transitional phrases, and moderately complex sentences.
-- If the level is Advanced, use rich vocabulary, idioms, complex sentence structures, and sophisticated language.
+- If the level is "Starter", generate ONLY a very basic greeting or a single extremely simple sentence (4-8 words max). Example: "Hello, how are you today?" or "My name is John."
+- If the level is "Beginner", use simple vocabulary and short sentences (2-3 sentences).
+- If the level is "Intermediate", use more varied vocabulary, transitional phrases, and moderately complex sentences (3-4 sentences).
+- If the level is "Advanced", use rich vocabulary, idioms, and complex sentence structures (4-5 sentences).
+- If the level is "Fluent", generate real-world content like a formal news snippet, a professional business brief, or a complex academic abstract. Use highly sophisticated language and varied sentence structures (5-6 sentences).
 - The text MUST be related to the topic "${topic}".
 - The output should be a single, natural-sounding paragraph just like an audiobook snippet or a short speech.
 - Provide ONLY the generated text in ${langName}. Do not provide English translations, introductions, or conversational fillers.
     `.trim();
+    
+    let generatedText = "";
+    // Prioritize gemini-2.5-flash as verified by listing available models
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+    
+    for (const modelName of modelsToTry) {
+      if (generatedText) break;
+      try {
+        console.log(`Trying model (generate): ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(aiPrompt);
+        generatedText = result.response.text().trim();
+      } catch (e: any) {
+        console.warn(`Model ${modelName} failed in generate: ${e.message}`);
+      }
+    }
 
-    const result = await model.generateContent(aiPrompt);
-    const generatedText = result.response.text().trim();
-
-    if(generatedText) {
-       return NextResponse.json({ prompt: generatedText });
+    if (generatedText) {
+      console.log("Successfully generated AI text using Gemini.");
+      return NextResponse.json({ prompt: generatedText });
     } else {
-       // if generation was empty, fallback
-       return NextResponse.json({ prompt: getFallbackPrompt() });
+      console.warn("AI generated an empty string or all models failed. Total fallback to hardcoded.");
+      return NextResponse.json({ prompt: getFallbackPrompt() });
     }
   } catch (error) {
     console.error("Gemini text generation error:", error);
