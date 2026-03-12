@@ -7,9 +7,10 @@ interface InteractiveTextProps {
   text: string;
   languageId: string;
   statuses?: Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>;
+  interactive?: boolean;
 }
 
-export default function InteractiveText({ text, languageId, statuses = {} }: InteractiveTextProps) {
+export default function InteractiveText({ text, languageId, statuses = {}, interactive = true }: InteractiveTextProps) {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [definition, setDefinition] = useState<string | null>(null);
   const [pinyinValue, setPinyinValue] = useState<string | null>(null);
@@ -18,6 +19,8 @@ export default function InteractiveText({ text, languageId, statuses = {} }: Int
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleWordClick = async (e: React.MouseEvent<HTMLSpanElement>, word: string) => {
+    if (!interactive) return;
+    
     // Clean word of punctuation for lookup and speech
     const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
     if (!cleanWord) return;
@@ -81,7 +84,7 @@ export default function InteractiveText({ text, languageId, statuses = {} }: Int
   };
 
   const speakWord = (word: string) => {
-    if (!window.speechSynthesis) return;
+    if (!interactive || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(word);
     
@@ -129,14 +132,15 @@ export default function InteractiveText({ text, languageId, statuses = {} }: Int
           return (
             <span
               key={i}
-              onClick={(e) => handleWordClick(e, token)}
+              onClick={interactive ? (e) => handleWordClick(e, token) : undefined}
               style={{
                 transition: 'all 0.2s',
                 display: 'inline-block',
                 color: color,
-                fontWeight: status && status !== 'neutral' ? 600 : 'inherit'
+                fontWeight: status && status !== 'neutral' ? 600 : 'inherit',
+                cursor: interactive ? 'pointer' : 'default'
               }}
-              className="interactive-word"
+              className={interactive ? "interactive-word" : ""}
             >
               {token}
             </span>

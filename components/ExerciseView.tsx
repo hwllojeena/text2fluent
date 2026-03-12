@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import InteractiveText from './InteractiveText';
+import { addPracticeRecord } from '@/utils/userTracker';
 
 interface ExerciseProps {
   languageId: string;
@@ -18,34 +20,21 @@ declare global {
 }
 
 export default function ExerciseView({ languageId, level, topic }: ExerciseProps) {
+  const { data: session } = useSession();
   const [prompt, setPrompt] = useState<string>('');
   const [transcript, setTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState(false);
   const [feedback, setFeedback] = useState<{ score: number; color: string } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [displayText, setDisplayText] = useState<string>('');
-  const [wordStatuses, setWordStatuses] = useState<Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>>({});
-  const [matchedIndices, setMatchedIndices] = useState<Set<number>>(new Set());
-  const [lastMatchedIdx, setLastMatchedIdx] = useState<number>(-1);
   const [translation, setTranslation] = useState<string | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
 
   const recognitionRef = useRef<any>(null);
-  
-  // Refs for real-time matching to avoid stale closures
-  const statusesRef = useRef<Record<number, 'correct' | 'incorrect' | 'current' | 'neutral'>>({});
-  const matchedRef = useRef<Set<number>>(new Set());
-  const lastMatchedRef = useRef<number>(-1);
 
   const fetchPrompt = useCallback(async () => {
     setFeedback(null);
     setTranscript('');
-    setWordStatuses({});
-    statusesRef.current = {};
-    setMatchedIndices(new Set());
-    matchedRef.current = new Set();
-    setLastMatchedIdx(-1);
-    lastMatchedRef.current = -1;
     setIsSpinning(true);
 
     const placeholders = [
@@ -106,12 +95,6 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
     // Reset state for a new session (Redo functionality)
     setFeedback(null);
     setTranscript('');
-    setWordStatuses({});
-    statusesRef.current = {};
-    setMatchedIndices(new Set());
-    matchedRef.current = new Set();
-    setLastMatchedIdx(-1);
-    lastMatchedRef.current = -1;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -140,70 +123,13 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
       const finalTranscript = transcriptValue.trim();
       setTranscript(finalTranscript);
       localTranscriptRef.current = finalTranscript;
-
-      // Real-time matching logic
-      let targetTokens: string[] = [];
-      if (languageId === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
-        const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
-        const segments = segmenter.segment(prompt);
-        targetTokens = Array.from(segments).map((s: any) => s.segment);
-      } else {
-        targetTokens = languageId === 'zh' ? 
-          prompt.split(/([\u4E00-\u9FFF]|[，。？！、：；“”‘’（）]|\s+)/).filter(Boolean) :
-          prompt.split(/(\s+)/);
-      }
-
-      // Use refs to avoid stale closures
-      const newStatuses = { ...statusesRef.current };
-      const newMatched = new Set(matchedRef.current);
-      let currentIdx = lastMatchedRef.current;
-      
-      // Look ahead up to 15 tokens to allow for skips
-      const lookAheadRange = 15;
-
-      targetTokens.forEach((token, idx) => {
-        const cleanToken = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
-        if (!cleanToken) return;
-
-        // Skip words already matched
-        if (newMatched.has(idx)) return;
-
-        // Lenient matching: Search for the word in the transcript
-        // We allow matching words that are ahead of our current position
-        if (idx > lastMatchedRef.current && idx <= lastMatchedRef.current + lookAheadRange) {
-          if (finalTranscript.includes(cleanToken)) {
-            newStatuses[idx] = 'correct';
-            newMatched.add(idx);
-            
-            // SKIP LOGIC: If we matched a word further ahead, mark all intermediate words as incorrect
-            for (let i = lastMatchedRef.current + 1; i < idx; i++) {
-              const prevClean = targetTokens[i].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
-              if (prevClean && !newMatched.has(i)) {
-                newStatuses[i] = 'incorrect';
-              }
-            }
-            
-            currentIdx = Math.max(currentIdx, idx);
-          }
-        }
-      });
-
-      // Update refs
-      statusesRef.current = newStatuses;
-      matchedRef.current = newMatched;
-      lastMatchedRef.current = currentIdx;
-
-      // Sync to state for UI re-render
-      setWordStatuses(newStatuses);
-      setMatchedIndices(newMatched);
-      setLastMatchedIdx(currentIdx);
     };
 
     recognition.onend = () => {
       setIsListening(false);
       recognitionRef.current = null;
       
-      // Final calculation: Mark unmatched words as incorrect
+      // Final calculation
       let targetTokens: string[] = [];
       if (languageId === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
         const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
@@ -215,43 +141,48 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
           prompt.split(/(\s+)/);
       }
       
-      const finalStatuses = { ...statusesRef.current };
-      tokensToWords(targetTokens).forEach((wordIdx) => {
-        if (!matchedRef.current.has(wordIdx)) {
-          finalStatuses[wordIdx] = 'incorrect';
+      const tokensToWords = (tokens: string[]) => {
+        const wordIndices: number[] = [];
+        tokens.forEach((token, idx) => {
+          if (token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim()) {
+            wordIndices.push(idx);
+          }
+        });
+        return wordIndices;
+      };
+
+      const wordTokensCount = tokensToWords(targetTokens).length;
+      if (wordTokensCount === 0) return;
+
+      let matchedCount = 0;
+      targetTokens.forEach((token) => {
+        const cleanToken = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
+        if (cleanToken && localTranscriptRef.current.includes(cleanToken)) {
+            matchedCount++;
         }
       });
 
-      statusesRef.current = finalStatuses;
-      setWordStatuses(finalStatuses);
-      
-      checkResult(localTranscriptRef.current, prompt.toLowerCase(), targetTokens, matchedRef.current);
+      const score = Math.min(100, Math.round((matchedCount / wordTokensCount) * 100));
+      setFeedback({
+        score,
+        color: score > 80 ? 'var(--success)' : score > 50 ? 'var(--secondary)' : 'var(--error)'
+      });
+
+      // Save to history and update streak!
+      if (session?.user?.email) {
+        addPracticeRecord(session.user.email, {
+          language: languageId,
+          topic: topic,
+          prompt: prompt,
+          score: score
+        });
+      }
     };
 
     recognition.start();
   };
 
-  // Helper to get indices of actual words (not just punctuation/spaces)
-  const tokensToWords = (tokens: string[]) => {
-    const wordIndices: number[] = [];
-    tokens.forEach((token, idx) => {
-      if (token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim()) {
-        wordIndices.push(idx);
-      }
-    });
-    return wordIndices;
-  };
 
-  const checkResult = (said: string, target: string, tokens: string[], matched: Set<number>) => {
-    const wordTokensCount = tokensToWords(tokens).length;
-    if (wordTokensCount === 0) return;
-
-    const score = (matched.size / wordTokensCount) * 100;
-    setFeedback({
-      score: Math.min(100, Math.round(score)),
-      color: score > 80 ? 'var(--success)' : score > 50 ? 'var(--secondary)' : 'var(--error)'
-    });
-  };
 
   return (
     <div className="premium-card animate-fade-in" style={{ textAlign: 'center' }}>
@@ -277,9 +208,27 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
           {isSpinning ? (
             displayText
           ) : (
-            <InteractiveText text={prompt} languageId={languageId} statuses={wordStatuses} />
+            <InteractiveText text={prompt} languageId={languageId} />
           )}
         </div>
+
+        {!isSpinning && prompt && (
+            <div style={{
+              minHeight: '80px',
+              padding: '1.5rem',
+              background: 'rgba(255, 255, 255, 0.5)',
+              borderRadius: '16px',
+              border: '1px solid var(--border)',
+              marginBottom: '2rem',
+              color: transcript ? 'var(--foreground)' : 'var(--text-muted)',
+              fontSize: '1.1rem',
+              lineHeight: '1.6',
+              fontStyle: transcript ? 'normal' : 'italic',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+            }}>
+              {transcript || "Your spoken text will appear here..."}
+            </div>
+        )}
 
         {languageId !== 'en' && !isSpinning && prompt && (
           <div style={{ marginBottom: '2.5rem' }}>
