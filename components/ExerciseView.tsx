@@ -129,40 +129,38 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
       setIsListening(false);
       recognitionRef.current = null;
       
-      // Final calculation
-      let targetTokens: string[] = [];
-      if (languageId === 'zh' && typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
-        const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
-        const segments = segmenter.segment(prompt);
-        targetTokens = Array.from(segments).map((s: any) => s.segment);
-      } else {
-        targetTokens = languageId === 'zh' ? 
-          prompt.split(/([\u4E00-\u9FFF]|[，。？！、：；“”‘’（）]|\s+)/).filter(Boolean) :
-          prompt.split(/(\s+)/);
-      }
-      
-      const tokensToWords = (tokens: string[]) => {
-        const wordIndices: number[] = [];
-        tokens.forEach((token, idx) => {
-          if (token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim()) {
-            wordIndices.push(idx);
+      const tokenize = (text: string, lang: string) => {
+        if (lang === 'zh') {
+          if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+            const segmenter = new (Intl as any).Segmenter('zh-CN', { granularity: 'word' });
+            return Array.from(segmenter.segment(text)).map((s: any) => s.segment);
           }
-        });
-        return wordIndices;
+          return text.split(/([\u4E00-\u9FFF]|[，。？！、：；“”‘’（）]|\s+)/).filter(Boolean);
+        }
+        return text.split(/(\s+)/);
       };
 
-      const wordTokensCount = tokensToWords(targetTokens).length;
-      if (wordTokensCount === 0) return;
+      const clean = (token: string) => {
+        return token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()，。？！、：；“”‘’（）]/g, "").trim().toLowerCase();
+      };
+
+      const targetTokens = tokenize(prompt, languageId);
+      const transcriptTokens = tokenize(localTranscriptRef.current, languageId).map(clean).filter(Boolean);
+      
+      const wordTokens = targetTokens.filter(t => clean(t));
+      if (wordTokens.length === 0) return;
 
       let matchedCount = 0;
-      targetTokens.forEach((token) => {
-        const cleanToken = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim().toLowerCase();
-        if (cleanToken && localTranscriptRef.current.includes(cleanToken)) {
-            matchedCount++;
+      const spokenSet = new Set(transcriptTokens);
+      
+      wordTokens.forEach((token) => {
+        const cleanToken = clean(token);
+        if (cleanToken && spokenSet.has(cleanToken)) {
+          matchedCount++;
         }
       });
 
-      const score = Math.min(100, Math.round((matchedCount / wordTokensCount) * 100));
+      const score = Math.min(100, Math.round((matchedCount / wordTokens.length) * 100));
       setFeedback({
         score,
         color: score > 80 ? 'var(--success)' : score > 50 ? 'var(--secondary)' : 'var(--error)'
