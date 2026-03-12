@@ -193,7 +193,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
         </p>
         <div style={{ 
           fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)', 
-          marginBottom: '1rem', 
+          marginBottom: '0.5rem', 
           lineHeight: '1.6', 
           color: isSpinning ? 'var(--primary)' : 'var(--foreground)', 
           fontWeight: 450,
@@ -214,7 +214,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
         </div>
 
         {!feedback && !isSpinning && (
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <button 
               className="btn-primary" 
               onClick={fetchPrompt}
@@ -226,6 +226,14 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
         )}
 
         {!isSpinning && prompt && (
+            <>
+            <div style={{ 
+              width: '100%', 
+              height: '1px', 
+              background: 'var(--card-border)', 
+              opacity: 0.5, 
+              margin: '1.5rem 0' 
+            }} />
             <div style={{
               minHeight: '80px',
               padding: '1.5rem',
@@ -241,6 +249,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
             }}>
               {transcript || "Your spoken text will appear here..."}
             </div>
+            </>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
