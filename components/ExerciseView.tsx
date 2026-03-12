@@ -218,7 +218,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
               onClick={fetchPrompt}
               style={{ background: 'var(--secondary)', color: 'var(--primary)', padding: '0.8rem 2rem', fontSize: '1rem', fontWeight: 600 }}
             >
-              🔄 Spin New Topic
+              🔄 Spin New Text
             </button>
           </div>
         )}
@@ -324,7 +324,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
                 style={{ background: 'var(--primary)', color: 'white' }}
                 onClick={fetchPrompt}
               >
-                🔄 Spin for New Topic!
+                🔄 Spin for New Text!
               </button>
             </div>
           )}

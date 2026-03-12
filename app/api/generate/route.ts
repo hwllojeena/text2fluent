@@ -142,7 +142,7 @@ export async function GET(request: Request) {
     return topicPrompts[Math.floor(Math.random() * topicPrompts.length)];
   };
 
-  if(!genAI) {
+  if (!genAI) {
     console.warn("GEMINI_API_KEY is not configured. Falling back.");
     return NextResponse.json({ prompt: getFallbackPrompt() });
   }
@@ -165,10 +165,10 @@ Guidelines:
 - The text MUST be related to the topic "${topic}".
 - Provide ONLY the generated text in ${langName}.
     `.trim();
-    
+
     let generatedText = "";
     const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
-    
+
     for (const modelName of modelsToTry) {
       if (generatedText) break;
       try {

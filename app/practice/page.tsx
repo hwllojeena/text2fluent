@@ -106,7 +106,7 @@ export default function Practice() {
           Speak your way to fluency
         </h1>
         <div className="platform-description">
-          <p>1) Spin to generate a speaking topic</p>
+          <p>1) Spin to generate a text</p>
           <p>2) Read the text aloud</p>
           <p>3) Build your fluency</p>
         </div>
@@ -131,7 +131,7 @@ export default function Practice() {
 
       <section className="right-panel">
         <div style={{ position: 'absolute', top: '1.5rem', right: '2rem', display: 'flex', gap: '1rem', zIndex: 110 }}>
-          <button 
+          <button
             onClick={() => setShowProfileModal(true)}
             style={{
               background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)',
@@ -145,12 +145,12 @@ export default function Practice() {
           >
             🔥 {currentStreak}
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setShowProfileModal(true)}
             style={{
               background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)',
-              border: '1px solid var(--card-border)', borderRadius: '50%', 
+              border: '1px solid var(--card-border)', borderRadius: '50%',
               width: '45px', height: '45px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
