@@ -5,6 +5,7 @@ export interface PracticeRecord {
   topic: string;
   prompt: string;
   score: number;
+  level?: string;
 }
 
 export interface SavedVocab {

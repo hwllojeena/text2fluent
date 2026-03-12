@@ -172,6 +172,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
       if (session?.user?.email) {
         addPracticeRecord(session.user.email, {
           language: languageId,
+          level: level,
           topic: topic,
           prompt: prompt,
           score: score

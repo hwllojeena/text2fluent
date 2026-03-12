@@ -219,7 +219,7 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
                   <div key={record.id} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', background: 'rgba(30, 58, 138, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
-                        {getLanguageName(record.language)} • {record.topic}
+                        {getLanguageName(record.language)} • {record.level || 'Beginner'} • {record.topic}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         {new Date(record.date).toLocaleDateString()}
