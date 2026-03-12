@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { pinyin } from 'pinyin-pro';
 import { useSession } from 'next-auth/react';
-import { saveVocab } from '@/utils/userTracker';
+import { saveVocab, getSavedVocab, removeVocab } from '@/utils/userTracker';
 
 interface InteractiveTextProps {
   text: string;
@@ -20,6 +20,7 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
   const [loading, setLoading] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [savedVocabId, setSavedVocabId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleWordClick = async (e: React.MouseEvent<HTMLSpanElement>, word: string) => {
@@ -34,6 +35,14 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
     setDefinition(null);
     setPinyinValue(null);
     setSaveStatus(null);
+
+    if (session?.user?.email) {
+      const saved = getSavedVocab(session.user.email);
+      const existing = saved.find(v => v.word === cleanWord && v.language === languageId);
+      setSavedVocabId(existing ? existing.id : null);
+    } else {
+      setSavedVocabId(null);
+    }
 
     if (languageId === 'zh') {
       setPinyinValue(pinyin(cleanWord, { toneType: 'symbol' }));
@@ -168,18 +177,27 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
               <button 
                 onClick={() => {
                   if (session?.user?.email && selectedWord && definition) {
-                    saveVocab(session.user.email, selectedWord, languageId, definition);
-                    setSaveStatus('Saved!');
+                    if (savedVocabId) {
+                      removeVocab(session.user.email, savedVocabId);
+                      setSavedVocabId(null);
+                      setSaveStatus('Unsaved!');
+                    } else {
+                      saveVocab(session.user.email, selectedWord, languageId, definition);
+                      const newSaved = getSavedVocab(session.user.email);
+                      const newlySaved = newSaved.find(v => v.word === selectedWord && v.language === languageId);
+                      if (newlySaved) setSavedVocabId(newlySaved.id);
+                      setSaveStatus('Saved!');
+                    }
                     setTimeout(() => setSaveStatus(null), 2000);
                   } else if (!session?.user?.email) {
                     setSaveStatus('Sign in to save');
                   }
                 }}
-                disabled={!definition || loading || saveStatus === 'Saved!'}
+                disabled={!definition || loading || saveStatus === 'Saved!' || saveStatus === 'Unsaved!'}
                 style={{ 
-                  background: saveStatus === 'Saved!' ? 'var(--success)' : 'var(--primary)', 
+                  background: (saveStatus === 'Saved!' || saveStatus === 'Unsaved!') ? 'var(--success)' : (savedVocabId ? 'var(--error)' : 'var(--primary)'), 
                   border: 'none', 
-                  cursor: (!definition || loading || saveStatus === 'Saved!') ? 'default' : 'pointer', 
+                  cursor: (!definition || loading || saveStatus === 'Saved!' || saveStatus === 'Unsaved!') ? 'default' : 'pointer', 
                   color: 'white', 
                   fontSize: '0.8rem', 
                   fontWeight: 600,
@@ -189,7 +207,7 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
                   whiteSpace: 'nowrap'
                 }}
               >
-                {saveStatus || 'Save 🔖'}
+                {saveStatus || (savedVocabId ? 'Unsave 🗑️' : 'Save 🔖')}
               </button>
             </div>
             

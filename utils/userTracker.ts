@@ -116,3 +116,17 @@ export const saveVocab = (email: string, word: string, language: string, definit
 export const getSavedVocab = (email: string): SavedVocab[] => {
   return getUserStats(email).savedVocab || [];
 };
+
+export const removeVocab = (email: string, vocabId: string) => {
+  if (typeof window === 'undefined') return;
+
+  const stats = getUserStats(email);
+  if (!stats.savedVocab) return;
+
+  const newStats: UserStats = {
+    ...stats,
+    savedVocab: stats.savedVocab.filter(v => v.id !== vocabId)
+  };
+
+  localStorage.setItem(getStorageKey(email), JSON.stringify(newStats));
+};

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUserStats, getSavedVocab, UserStats, SavedVocab } from '@/utils/userTracker';
+import { getUserStats, getSavedVocab, removeVocab, UserStats, SavedVocab } from '@/utils/userTracker';
 import { useSession } from 'next-auth/react';
 import TestModal from './TestModal';
 
@@ -287,6 +287,21 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
                     <p style={{ fontSize: '1rem', color: 'var(--foreground)', lineHeight: 1.5, margin: 0, fontWeight: 300 }}>
                       {vocab.definition}
                     </p>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.2rem' }}>
+                      <button 
+                        onClick={() => {
+                          if (session?.user?.email) {
+                            removeVocab(session.user.email, vocab.id);
+                            setSavedVocab(getSavedVocab(session.user.email));
+                          }
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--error)', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '4px' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        Unsave 🗑️
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
