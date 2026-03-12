@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 const PROMPTS: Record<string, Record<string, Record<string, string[]>>> = {
   en: {
@@ -90,11 +93,60 @@ export async function GET(request: Request) {
   const level = searchParams.get('level') || 'Beginner';
   const topic = searchParams.get('topic') || 'default';
 
-  const languagePrompts = PROMPTS[lang] || PROMPTS['en'];
-  const levelPrompts = (languagePrompts as any)[level] || (languagePrompts as any)['Beginner'];
-  const topicPrompts = (levelPrompts as any)[topic] || (levelPrompts as any)['Daily conversation'] || (levelPrompts as any)['default'];
+  const langMap: Record<string, string> = {
+    en: 'English',
+    zh: 'Mandarin Chinese',
+    es: 'Spanish',
+    it: 'Italian',
+    de: 'German'
+  };
+  const langName = langMap[lang] || lang;
 
-  const randomPrompt = topicPrompts[Math.floor(Math.random() * topicPrompts.length)];
+  // Function to get a fallback hardcoded prompt in case Gemini fails or isn't configured
+  const getFallbackPrompt = () => {
+    const languagePrompts = PROMPTS[lang] || PROMPTS['en'];
+    const levelPrompts = (languagePrompts as any)[level] || (languagePrompts as any)['Beginner'];
+    const topicPrompts = (levelPrompts as any)[topic] || (levelPrompts as any)['Daily conversation'] || (levelPrompts as any)['default'];
+    return topicPrompts[Math.floor(Math.random() * topicPrompts.length)];
+  };
 
-  return NextResponse.json({ prompt: randomPrompt });
+  if(!genAI) {
+    console.warn("GEMINI_API_KEY is not configured. Falling back to hardcoded prompts.");
+    return NextResponse.json({ prompt: getFallbackPrompt() });
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    
+    // Construct prompt for the AI to generate a text paragraph
+    let aiPrompt = `
+You are a language teacher creating continuous, natural reading and speaking practice material.
+Generate a cohesive paragraph (3 to 6 sentences maximum) in ${langName}.
+The difficulty level is: ${level}.
+The topic is: "${topic}".
+
+Guidelines:
+- If the language is Mandarin Chinese (zh), output ONLY Chinese characters (no Pinyin).
+- If the level is Beginner, use simple vocabulary, short sentences, and everyday grammar.
+- If the level is Intermediate, use more varied vocabulary, transitional phrases, and moderately complex sentences.
+- If the level is Advanced, use rich vocabulary, idioms, complex sentence structures, and sophisticated language.
+- The text MUST be related to the topic "${topic}".
+- The output should be a single, natural-sounding paragraph just like an audiobook snippet or a short speech.
+- Provide ONLY the generated text in ${langName}. Do not provide English translations, introductions, or conversational fillers.
+    `.trim();
+
+    const result = await model.generateContent(aiPrompt);
+    const generatedText = result.response.text().trim();
+
+    if(generatedText) {
+       return NextResponse.json({ prompt: generatedText });
+    } else {
+       // if generation was empty, fallback
+       return NextResponse.json({ prompt: getFallbackPrompt() });
+    }
+  } catch (error) {
+    console.error("Gemini text generation error:", error);
+    // Fallback to hardcoded prompts if the API fails
+    return NextResponse.json({ prompt: getFallbackPrompt() });
+  }
 }
