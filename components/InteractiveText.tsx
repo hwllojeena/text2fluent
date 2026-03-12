@@ -59,20 +59,31 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
     // Pronounce the word
     speakWord(cleanWord);
 
-    // Fetch definition
+    // Fetch definition using Context-Aware Dictionary (Gemini)
     try {
-      if (languageId === 'en') {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord.toLowerCase()}`);
-        if (res.ok) {
-          const data = await res.json();
-          const def = data[0]?.meanings[0]?.definitions[0]?.definition;
-          setDefinition(def || "Definition not found.");
+      const gRes = await fetch('/api/dictionary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: cleanWord, context: text, languageId })
+      });
+      const gData = await gRes.json();
+
+      if (gRes.ok && gData.definition && !gData.needsFallback) {
+        setDefinition(gData.definition);
+      } else {
+        // Fallback logic if Gemini is unconfigured or failed
+        if (languageId === 'en') {
+          const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord.toLowerCase()}`);
+          if (res.ok) {
+            const data = await res.json();
+            const def = data[0]?.meanings[0]?.definitions[0]?.definition;
+            setDefinition(def || "Definition not found.");
+          } else {
+            await fetchFallbackTranslation(cleanWord);
+          }
         } else {
-          // Fallback to translation if dictionary fails
           await fetchFallbackTranslation(cleanWord);
         }
-      } else {
-        await fetchFallbackTranslation(cleanWord);
       }
     } catch (err) {
       setDefinition("Error fetching meaning.");
