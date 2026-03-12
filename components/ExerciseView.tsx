@@ -321,10 +321,10 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
               </p>
               <button 
                 className="btn-primary" 
-                style={{ background: 'var(--primary)', color: 'white' }}
+                style={{ background: 'var(--secondary)', color: 'var(--primary)', padding: '0.8rem 2rem', fontSize: '1rem', fontWeight: 600, marginTop: '1rem' }}
                 onClick={fetchPrompt}
               >
-                🔄 Spin for New Text!
+                🔄 Spin New Text
               </button>
             </div>
           )}
