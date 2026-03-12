@@ -193,7 +193,7 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
         </p>
         <div style={{ 
           fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)', 
-          marginBottom: '2.5rem', 
+          marginBottom: '1rem', 
           lineHeight: '1.6', 
           color: isSpinning ? 'var(--primary)' : 'var(--foreground)', 
           fontWeight: 450,
