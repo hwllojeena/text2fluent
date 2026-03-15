@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { SupabaseAdapter } from "@auth/supabase-adapter"
 
 const handler = NextAuth({
   providers: [
@@ -23,13 +24,25 @@ const handler = NextAuth({
       }
     })
   ],
+  adapter: SupabaseAdapter({
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    secret: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "", // RLS is disabled so anon key works for server-to-db adapter as well
+  }),
   pages: {
     signIn: '/',
   },
   callbacks: {
-    async session({ session, token }) {
+    async session({ session, user, token }) {
+      if (session.user) {
+        // Because of the adapter, the database user object is passed as `user`
+        // We inject the database UUID to the session for frontend usage.
+        (session.user as any).id = user?.id || token?.sub;
+      }
       return session
     },
+  },
+  session: {
+    strategy: "jwt", // Use JWT since we might not have a database fallback for the credentials provider
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-dev",
   debug: process.env.NODE_ENV === 'development',

@@ -27,10 +27,18 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
   const [filterLang, setFilterLang] = useState('all');
 
   useEffect(() => {
-    if (session?.user?.email) {
-      setStats(getUserStats(session.user.email));
-      setSavedVocab(getSavedVocab(session.user.email));
-    }
+    const fetchStats = async () => {
+      if (session && session.user && (session.user as any).id) {
+        const userId = (session.user as any).id;
+        const [statsData, vocabData] = await Promise.all([
+          getUserStats(userId),
+          getSavedVocab(userId)
+        ]);
+        setStats(statsData);
+        setSavedVocab(vocabData);
+      }
+    };
+    fetchStats();
   }, [session, activeTab]);
 
   const handlePasswordChange = (e: React.FormEvent) => {
@@ -289,10 +297,11 @@ export default function UserProfileModal({ onClose }: UserProfileModalProps) {
                     </p>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.2rem' }}>
                       <button 
-                        onClick={() => {
-                          if (session?.user?.email) {
-                            removeVocab(session.user.email, vocab.id);
-                            setSavedVocab(getSavedVocab(session.user.email));
+                        onClick={async () => {
+                          if (session && session.user && (session.user as any).id) {
+                            const userId = (session.user as any).id;
+                            await removeVocab(userId, vocab.id);
+                            setSavedVocab(await getSavedVocab(userId));
                           }
                         }}
                         style={{ background: 'none', border: 'none', color: 'var(--error)', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '4px' }}
