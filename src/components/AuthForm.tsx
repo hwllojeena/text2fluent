@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function AuthForm() {
+  const router = useRouter();
+  const supabase = createClient();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,38 +20,55 @@ export default function AuthForm() {
 
     try {
       if (isSignUp) {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
         });
-        const data = await res.json();
         
-        if (!res.ok) {
-          setError(data.error || 'Registration failed');
+        if (signUpError) {
+          setError(signUpError.message || 'Registration failed');
           setLoading(false);
           return;
         }
 
-        // Auto login after successful registration
-        const result = await signIn('credentials', {
-          redirect: false,
-          email,
-          password,
-        });
-        if (result?.error) setError(result.error);
+        // Auto login might happen if email confirmations are disabled.
+        // If not, we could show a message, but for seamless migration, let's redirect.
+        router.push('/');
+        router.refresh(); // Refresh to catch new auth state
       } else {
-        const result = await signIn('credentials', {
-          redirect: false,
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (result?.error) setError(result.error);
+        
+        if (signInError) {
+          setError(signInError.message || 'Invalid credentials');
+        } else {
+          router.push('/');
+          router.refresh(); // Refresh to catch new auth state
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred.');
     } finally {
-      setLoading(false);
+      if (isSignUp && error === '') {
+          // Keep loading true while redirecting
+      } else {
+          setLoading(false);
+      }
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
     }
   };
 
@@ -102,7 +122,8 @@ export default function AuthForm() {
 
       <button
         className="btn-primary"
-        onClick={() => signIn('google')}
+        onClick={handleGoogleSignIn}
+        type="button"
         style={{
           width: '100%',
           background: 'white',

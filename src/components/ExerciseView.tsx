@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/components/Providers';
 import InteractiveText from './InteractiveText';
 import { addPracticeRecord } from '@/utils/userTracker';
 
