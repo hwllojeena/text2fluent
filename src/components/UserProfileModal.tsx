@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getUserStats, getSavedVocab, removeVocab, UserStats, SavedVocab } from '@/utils/userTracker';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/components/Providers';
 import TestModal from './TestModal';
 
 interface UserProfileModalProps {

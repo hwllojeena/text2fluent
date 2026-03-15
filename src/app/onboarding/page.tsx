@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signOut } from '@/components/Providers';
 
 const LANGUAGES = [
   { id: 'en', name: 'English', flag: '🇺🇸' },

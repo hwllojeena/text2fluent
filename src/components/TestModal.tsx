@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/components/Providers';
 
 interface TestModalProps {
   languageId: string;

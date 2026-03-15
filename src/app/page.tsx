@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AuthForm from '@/components/AuthForm';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signOut } from '@/components/Providers';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {

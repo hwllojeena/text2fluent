@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from '@/components/Providers';
 import ExerciseView from '@/components/ExerciseView';
 import UserProfileModal from '@/components/UserProfileModal';
 import { getUserStats } from '@/utils/userTracker';
@@ -47,7 +47,7 @@ export default function Practice() {
   // Fetch streak interval to keep it updated when modal closes
   useEffect(() => {
     if (session?.user?.email && !showProfileModal) {
-      setCurrentStreak(getUserStats(session.user.email).streak);
+      getUserStats(session.user.email).then(stats => setCurrentStreak(stats.streak));
     }
   }, [session, showProfileModal]);
 
@@ -80,7 +80,6 @@ export default function Practice() {
   }, [status, router]);
 
   const handleSignOut = async () => {
-    const { signOut } = await import('next-auth/react');
     localStorage.removeItem('text2fluent_onboarding');
     await signOut({ callbackUrl: '/' });
   };

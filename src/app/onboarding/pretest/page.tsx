@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signOut } from '@/components/Providers';
 import InteractiveText from '@/components/InteractiveText';
 
 const TEST_PHASES = [

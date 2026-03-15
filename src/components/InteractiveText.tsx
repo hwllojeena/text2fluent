@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { pinyin } from 'pinyin-pro';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/components/Providers';
 import { saveVocab, getSavedVocab, removeVocab } from '@/utils/userTracker';
 
 interface InteractiveTextProps {
