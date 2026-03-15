@@ -16,11 +16,25 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // This is a placeholder for actual database logic
-        if (credentials?.email && credentials?.password) {
-          return { id: "1", name: credentials.email.split('@')[0], email: credentials.email }
+        if (!credentials?.email || !credentials?.password) return null;
+
+        const { supabase } = await import('@/utils/supabase');
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password,
+        });
+
+        if (error || !data.user) {
+          // Throwing an error will display the message on the frontend (handled by result.error)
+          throw new Error(error?.message || 'Invalid credentials');
         }
-        return null
+
+        return {
+          id: data.user.id,
+          name: data.user.email?.split('@')[0] || '',
+          email: data.user.email,
+        };
       }
     })
   ],

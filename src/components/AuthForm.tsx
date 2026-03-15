@@ -17,8 +17,20 @@ export default function AuthForm() {
 
     try {
       if (isSignUp) {
-        // Handle custom signup logic here if needed
-        // For now, we'll just sign them in directly using the credentials provider
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          setError(data.error || 'Registration failed');
+          setLoading(false);
+          return;
+        }
+
+        // Auto login after successful registration
         const result = await signIn('credentials', {
           redirect: false,
           email,
