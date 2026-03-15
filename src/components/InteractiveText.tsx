@@ -36,8 +36,8 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
     setPinyinValue(null);
     setSaveStatus(null);
 
-    if (session?.user?.email) {
-      const saved = getSavedVocab(session.user.email);
+    if (session && session.user && (session.user as any).id) {
+      const saved = await getSavedVocab((session.user as any).id);
       const existing = saved.find(v => v.word === cleanWord && v.language === languageId);
       setSavedVocabId(existing ? existing.id : null);
     } else {
@@ -186,21 +186,22 @@ export default function InteractiveText({ text, languageId, statuses = {}, inter
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', gap: '1rem' }}>
               <strong style={{ fontSize: '1.2rem', color: 'var(--primary)', fontFamily: 'Lexend, sans-serif' }}>{selectedWord}</strong>
               <button 
-                onClick={() => {
-                  if (session?.user?.email && selectedWord && definition) {
+                onClick={async () => {
+                  if (session && session.user && (session.user as any).id && selectedWord && definition) {
+                    const userId = (session.user as any).id;
                     if (savedVocabId) {
-                      removeVocab(session.user.email, savedVocabId);
+                      await removeVocab(userId, savedVocabId);
                       setSavedVocabId(null);
                       setSaveStatus('Unsaved!');
                     } else {
-                      saveVocab(session.user.email, selectedWord, languageId, definition);
-                      const newSaved = getSavedVocab(session.user.email);
+                      await saveVocab(userId, selectedWord, languageId, definition);
+                      const newSaved = await getSavedVocab(userId);
                       const newlySaved = newSaved.find(v => v.word === selectedWord && v.language === languageId);
                       if (newlySaved) setSavedVocabId(newlySaved.id);
                       setSaveStatus('Saved!');
                     }
                     setTimeout(() => setSaveStatus(null), 2000);
-                  } else if (!session?.user?.email) {
+                  } else if (!session || !session.user || !(session.user as any).id) {
                     setSaveStatus('Sign in to save');
                   }
                 }}

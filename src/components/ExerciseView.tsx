@@ -167,8 +167,8 @@ export default function ExerciseView({ languageId, level, topic }: ExerciseProps
       });
 
       // Save to history and update streak!
-      if (session?.user?.email) {
-        addPracticeRecord(session.user.email, {
+      if (session && session.user && (session.user as any).id) {
+        addPracticeRecord((session.user as any).id, {
           language: languageId,
           level: level,
           topic: topic,
