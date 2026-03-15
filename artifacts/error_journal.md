@@ -1,7 +1,7 @@
-## [2026-03-15] Failure to follow Atomic Commits and Verification Rules
+## [2026-03-15] Supabase Email Rate Limit Exceeded
 
-- **What happened:** Implemented the entire Supabase database integration (schema planning, DB provisioning, dependency installation, NextAuth configuration, and UI refactoring) in one continuous flow without running intermediate tests or creating atomic git commits.
-- **Root cause:** Focused entirely on completing the implementation steps in `task.md` and neglected the overarching structural rules defined in `general-guidelines.md` (Rules 2, 3, and 7).
-- **Fix applied:** Halting implementation. Documenting the error. Running `npm run lint` to verify the codebase, saving logs to `artifacts/logs/`, and then proactively breaking the uncommitted changes into separate, logical atomic commits.
-- **Lesson learned:** Overarching architectural rules (like verifying after *every logic change* and *atomic commits*) must be treated as absolute constraints for every single step, not just an afterthought once the feature is "done".
-- **Prevention rule:** Before marking any logical execution step as complete in `task.md`, verify the code (lint/build) and make an atomic `git commit`. Do not batch multiple distinct changes (e.g., Auth config vs UI refactoring) into a single unverified block.
+- What happened: Automated test script failed with `email rate limit exceeded` when trying to register new test users.
+- Root cause: Supabase has strict rate limits for email signups (often 3-4 per hour per IP on the free/standard tier) to prevent abuse. Repeatedly running testing scripts that call `.signUp()` quickly exhausts this limit, especially if the initial emails were rejected as "invalid" but still counted towards the limit.
+- Fix applied: Decided not to spam the signUp endpoint programmatically. The test script must either use an existing, known-good credential or be run cautiously.
+- Lesson learned: Never repeatedly call Supabase `signUp` in automated E2E tests against a live/remote Supabase instance without a dedicated testing strategy (like local Supabase or disabling rate limits in the dashboard).
+- Prevention rule: In the future, prefer mocking Supabase auth in integration tests or use a dedicated local instance (`supabase start`) instead of hitting the remote project for credential creation tests.
