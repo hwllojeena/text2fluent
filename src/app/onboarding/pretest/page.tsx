@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from '@/components/Providers';
 import InteractiveText from '@/components/InteractiveText';
+import UnauthenticatedView from '@/components/UnauthenticatedView';
 
 const TEST_PHASES = [
   { level: 'Beginner', difficulty: 'Beginner' },
@@ -191,6 +192,7 @@ export default function Pretest() {
     router.push('/');
   };
 
+  if (status === 'unauthenticated') return <UnauthenticatedView />;
   if (loading || status === 'loading') return null;
 
   return (

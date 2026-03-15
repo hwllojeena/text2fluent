@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from '@/components/Providers';
+import UnauthenticatedView from '@/components/UnauthenticatedView';
 
 const LANGUAGES = [
   { id: 'en', name: 'English', flag: '🇺🇸' },
@@ -38,11 +39,7 @@ export default function Onboarding() {
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [step, setStep] = useState(0);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    }
-  }, [status, router]);
+  // Removed unauthenticated redirect
 
   useEffect(() => {
     if (session?.user?.name && !userName) {
@@ -69,6 +66,7 @@ export default function Onboarding() {
     }
   };
 
+  if (status === 'unauthenticated') return <UnauthenticatedView />;
   if (status === 'loading') return null;
 
   return (

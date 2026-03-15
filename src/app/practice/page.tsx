@@ -6,6 +6,7 @@ import { useSession, signOut } from '@/components/Providers';
 import ExerciseView from '@/components/ExerciseView';
 import UserProfileModal from '@/components/UserProfileModal';
 import { getUserStats } from '@/utils/userTracker';
+import UnauthenticatedView from '@/components/UnauthenticatedView';
 
 const LANGUAGES = [
   { id: 'en', name: 'English', flag: '🇺🇸' },
@@ -52,9 +53,7 @@ export default function Practice() {
   }, [session, showProfileModal]);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/');
-    } else if (status === 'authenticated') {
+    if (status === 'authenticated') {
       const data = localStorage.getItem('text2fluent_onboarding');
       if (data) {
         const parsedData = JSON.parse(data);
@@ -83,6 +82,10 @@ export default function Practice() {
     localStorage.removeItem('text2fluent_onboarding');
     await signOut({ callbackUrl: '/' });
   };
+
+  if (status === 'unauthenticated') {
+    return <UnauthenticatedView />;
+  }
 
   if (status === 'loading' || loading) {
     return (
