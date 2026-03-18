@@ -198,6 +198,14 @@ export default function Pretest() {
   return (
     <div className="main-layout">
       <aside className="left-panel animate-fade-in">
+        {/* Logo + Brand Name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Text2Fluent Logo" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
+          <span style={{ fontFamily: "'Welcome Darling', cursive", fontSize: '1.5rem', fontWeight: 500, color: 'var(--foreground)', letterSpacing: '0.02em' }}>
+            Text2Fluent
+          </span>
+        </div>
         <h1 style={{ fontSize: '5rem', lineHeight: '1', marginBottom: '1rem' }}>
           Let’s find your level
         </h1>
