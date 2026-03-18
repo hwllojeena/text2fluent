@@ -410,7 +410,7 @@ h1, h2, h3, h4 {
     font-size: 1.2rem;
   }
   .right-panel {
-    padding: 1.5rem 1rem 2rem; /* Reduced bottom padding */
+    padding: 0.5rem 1rem 2rem; /* Reduced top and bottom padding */
   }
   .glass-nav {
     padding: 1rem 1.5rem;
@@ -515,6 +515,25 @@ h1, h2, h3, h4 {
   to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
 
+/* ── Skeleton loader ─────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.skeleton-block {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.8) 25%,
+    rgba(241, 245, 249, 1)   50%,
+    rgba(226, 232, 240, 0.8) 75%
+  );
+  background-size: 600px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+/* ─────────────────────────────────────────────────────── */
+
 /* Hide scrollbar */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -522,4 +541,46 @@ h1, h2, h3, h4 {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.nav-tabs-container {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.nav-tab-btn {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .left-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    padding-bottom: 0 !important;
+  }
+  .nav-tabs-container {
+    order: 3;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0;
+    justify-content: flex-start;
+    width: calc(100% + 4rem);
+    margin-left: -2rem;
+    margin-right: -2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+  .hero-title {
+    order: 1;
+    margin-bottom: 1rem !important;
+  }
+  .platform-description {
+    order: 2;
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
 }
