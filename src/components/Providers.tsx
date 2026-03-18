@@ -61,6 +61,7 @@ export default function SessionProvider({ children }: { children: React.ReactNod
 export const useSession = () => useContext(AuthContext);
 
 export const signOut = async ({ callbackUrl = '/' } = {}) => {
+  localStorage.removeItem('text2fluent_onboarding');
   const supabase = createClient();
   await supabase.auth.signOut();
   window.location.href = callbackUrl;

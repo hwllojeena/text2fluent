@@ -12,9 +12,19 @@ export default function Home() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      const data = localStorage.getItem('text2fluent_onboarding');
-      if (data) {
-        const parsedData = JSON.parse(data);
+      const metadata = session?.user?.user_metadata?.text2fluent_onboarding;
+      const localDataStr = localStorage.getItem('text2fluent_onboarding');
+      
+      let parsedData = null;
+      if (metadata) {
+        parsedData = metadata;
+        // Keep local storage in sync
+        localStorage.setItem('text2fluent_onboarding', JSON.stringify(metadata));
+      } else if (localDataStr) {
+        parsedData = JSON.parse(localDataStr);
+      }
+
+      if (parsedData) {
         if (parsedData.completed) {
           router.push('/practice');
         } else {
@@ -30,7 +40,7 @@ export default function Home() {
     } else if (status === 'unauthenticated') {
       setLoading(false);
     }
-  }, [status, router]);
+  }, [status, router, session]);
 
   const handleSignOut = async () => {
     localStorage.removeItem('text2fluent_onboarding');
@@ -49,6 +59,14 @@ export default function Home() {
     <div className="main-layout">
       {/* Permanent Left Panel */}
       <aside className="left-panel animate-fade-in">
+        {/* Logo + Brand Name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Text2Fluent Logo" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
+          <span style={{ fontFamily: "'Welcome Darling', cursive", fontSize: '1.5rem', fontWeight: 500, color: 'var(--foreground)', letterSpacing: '0.02em' }}>
+            Text2Fluent
+          </span>
+        </div>
         <h1 style={{ fontSize: '5rem', lineHeight: '1', marginBottom: '1rem' }}>
           Speak your way to fluency
         </h1>
