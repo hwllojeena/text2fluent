@@ -47,7 +47,7 @@ export default function Onboarding() {
     }
   }, [session, userName]);
 
-  const finishOnboarding = () => {
+  const finishOnboarding = async () => {
     if (selectedLang && selectedLevel && selectedGoal) {
       const onboardingData = {
         userName,
@@ -56,7 +56,16 @@ export default function Onboarding() {
         selectedGoal,
         completed: selectedLevel !== '6'
       };
+      
+      // Save locally as a fallback
       localStorage.setItem('text2fluent_onboarding', JSON.stringify(onboardingData));
+      
+      // Save to Supabase Auth User Metadata for persistence across devices
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      await supabase.auth.updateUser({
+        data: { text2fluent_onboarding: onboardingData }
+      });
       
       if (selectedLevel === '6') {
         router.push('/onboarding/pretest');

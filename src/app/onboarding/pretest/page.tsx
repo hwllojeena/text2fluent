@@ -171,7 +171,7 @@ export default function Pretest() {
     }
   };
 
-  const finalizeLevel = () => {
+  const finalizeLevel = async () => {
     let assignedLevel = 'Beginner';
     const [s1, s2, s3] = scores;
 
@@ -188,7 +188,17 @@ export default function Pretest() {
       selectedLevel: assignedLevel === 'Beginner' ? '1' : assignedLevel === 'Intermediate' ? '3' : '5',
       completed: true
     };
+    
+    // Save locally as a fallback
     localStorage.setItem('text2fluent_onboarding', JSON.stringify(updatedData));
+    
+    // Save to Supabase Auth User Metadata for persistence across devices
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    await supabase.auth.updateUser({
+      data: { text2fluent_onboarding: updatedData }
+    });
+    
     router.push('/');
   };
 

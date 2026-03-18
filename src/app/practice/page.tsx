@@ -47,9 +47,18 @@ export default function Practice() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      const data = localStorage.getItem('text2fluent_onboarding');
-      if (data) {
-        const parsedData = JSON.parse(data);
+      const metadata = session?.user?.user_metadata?.text2fluent_onboarding;
+      const localDataStr = localStorage.getItem('text2fluent_onboarding');
+      
+      let parsedData = null;
+      if (metadata) {
+        parsedData = metadata;
+        localStorage.setItem('text2fluent_onboarding', JSON.stringify(metadata));
+      } else if (localDataStr) {
+        parsedData = JSON.parse(localDataStr);
+      }
+
+      if (parsedData) {
         if (parsedData.completed) {
           // Initialize filters from onboarding data
           setInitialLang(parsedData.selectedLang || 'en');
@@ -65,7 +74,7 @@ export default function Practice() {
         router.push('/onboarding');
       }
     }
-  }, [status, router]);
+  }, [status, router, session]);
 
   if (status === 'unauthenticated') {
     return <UnauthenticatedView />;

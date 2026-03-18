@@ -12,9 +12,19 @@ export default function Home() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      const data = localStorage.getItem('text2fluent_onboarding');
-      if (data) {
-        const parsedData = JSON.parse(data);
+      const metadata = session?.user?.user_metadata?.text2fluent_onboarding;
+      const localDataStr = localStorage.getItem('text2fluent_onboarding');
+      
+      let parsedData = null;
+      if (metadata) {
+        parsedData = metadata;
+        // Keep local storage in sync
+        localStorage.setItem('text2fluent_onboarding', JSON.stringify(metadata));
+      } else if (localDataStr) {
+        parsedData = JSON.parse(localDataStr);
+      }
+
+      if (parsedData) {
         if (parsedData.completed) {
           router.push('/practice');
         } else {
@@ -30,7 +40,7 @@ export default function Home() {
     } else if (status === 'unauthenticated') {
       setLoading(false);
     }
-  }, [status, router]);
+  }, [status, router, session]);
 
   const handleSignOut = async () => {
     localStorage.removeItem('text2fluent_onboarding');
